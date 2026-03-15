@@ -34,6 +34,7 @@ export const ROUTES = {
   MESSAGES: '/messages',
   MESSAGE_DETAIL: '/messages/:id',
   GUEST_PORTAL: '/stay/:code',
+  PORTFOLIO: '/portfolio/:slug',
 };
 
 export function propertyRoute(id: string) {
@@ -46,6 +47,10 @@ export function bookingRoute(propertyId: string) {
 
 export function editPropertyRoute(id: string) {
   return `/dashboard/properties/${id}/edit`;
+}
+
+export function portfolioRoute(slug: string) {
+  return `/portfolio/${slug}`;
 }
 
 export function messageDetailRoute(id: string) {

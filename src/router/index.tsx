@@ -29,6 +29,7 @@ const Home = lazy(() => import('../pages/public/Home').then(m => ({ default: m.H
 const Search = lazy(() => import('../pages/public/Search').then(m => ({ default: m.SearchPage })));
 const PropertyDetail = lazy(() => import('../pages/public/PropertyDetail').then(m => ({ default: m.PropertyDetailPage })));
 const Booking = lazy(() => import('../pages/public/Booking').then(m => ({ default: m.BookingPage })));
+const Portfolio = lazy(() => import('../pages/public/Portfolio').then(m => ({ default: m.PortfolioPage })));
 
 // Auth pages
 const Login = lazy(() => import('../pages/auth/Login').then(m => ({ default: m.LoginPage })));
@@ -97,6 +98,7 @@ export const router = createBrowserRouter([
       { path: ROUTES.HOME, element: withSuspense(Home) },
       { path: ROUTES.SEARCH, element: withSuspense(Search) },
       { path: ROUTES.PROPERTY, element: withSuspense(PropertyDetail) },
+      { path: ROUTES.PORTFOLIO, element: withSuspense(Portfolio) },
       {
         element: <AuthGuard />,
         children: [
