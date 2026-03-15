@@ -119,14 +119,15 @@ jobs:
           echo "  🔨 Rebuilding frontend..."
           echo "══════════════════════════════════════════"
 
-          # Rebuild only frontend service
+          # Build only the frontend image
           docker compose -f docker-compose.apps.yml -f docker-compose.prod.yml build frontend
 
           echo "══════════════════════════════════════════"
           echo "  🚀 Deploying frontend..."
           echo "══════════════════════════════════════════"
 
-          docker compose -f docker-compose.apps.yml -f docker-compose.prod.yml up -d frontend
+          # Stop + recreate only frontend (--no-deps avoids touching other services)
+          docker compose -f docker-compose.apps.yml -f docker-compose.prod.yml up -d --no-deps --force-recreate frontend
 
           echo "⏳ Waiting..."
           sleep 5
