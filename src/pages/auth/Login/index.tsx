@@ -18,8 +18,23 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
+interface DemoAccount {
+  email: string;
+  name: string;
+  role: string;
+  description: string;
+}
+
+const DEMO_ACCOUNTS: DemoAccount[] = [
+  { email: 'joao@praiadosol.com.br', name: 'João Silva', role: 'Host', description: '🏠 Anfitrião' },
+  { email: 'maria@gmail.com', name: 'Maria Santos', role: 'Guest', description: '🧳 Hóspede' },
+  { email: 'admin@hospedabr.com', name: 'Super Admin', role: 'SuperAdmin', description: '🔧 Admin' },
+  { email: 'fernanda@praiadosol.com.br', name: 'Fernanda Souza', role: 'PropertyManager', description: '👩‍💼 Gerente' },
+];
+
 export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
+  const [demoLoading, setDemoLoading] = useState<string | null>(null);
   const { login } = useAuthStore();
   const navigate = useNavigate();
   const { success, error: showError } = useToast();
@@ -41,19 +56,56 @@ export function LoginPage() {
     }
   };
 
+  const handleDemoLogin = async (account: DemoAccount) => {
+    setDemoLoading(account.email);
+    try {
+      const result = await authService.demoLogin(account.email);
+      login(result.user, result.token);
+      success(`Bem-vindo, ${result.user.name?.split(' ')[0]}! (conta demo)`);
+      if (result.user.role === 'admin') navigate(ROUTES.ADMIN);
+      else if (result.user.role === 'host') navigate(ROUTES.DASHBOARD);
+      else navigate(ROUTES.HOME);
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Erro no login demo');
+    } finally {
+      setDemoLoading(null);
+    }
+  };
+
   return (
     <div>
       <h1 className="text-2xl font-bold text-neutral-900 mb-2">Bem-vindo de volta</h1>
       <p className="text-neutral-500 text-sm mb-6">Entre na sua conta para continuar</p>
 
-      {/* Demo credentials */}
-      <div className="bg-primary/5 rounded-xl p-4 mb-6 text-xs">
-        <p className="font-semibold text-primary mb-2">Credenciais de demonstração:</p>
-        <div className="space-y-1 text-neutral-600">
-          <p><strong>Admin:</strong> admin@hospedagem.com</p>
-          <p><strong>Anfitrião:</strong> carlos@hotel.com</p>
-          <p><strong>Hóspede:</strong> joao@email.com</p>
-          <p className="text-neutral-400 mt-2">Senha: qualquer valor (ex: 123456)</p>
+      {/* Demo Quick Login */}
+      <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-6">
+        <p className="text-xs font-semibold text-blue-700 mb-3">⚡ Login rápido — contas de demonstração:</p>
+        <div className="grid grid-cols-2 gap-2">
+          {DEMO_ACCOUNTS.map((account) => (
+            <button
+              key={account.email}
+              onClick={() => handleDemoLogin(account)}
+              disabled={!!demoLoading}
+              className="flex items-center gap-2 bg-white hover:bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-left transition disabled:opacity-50 disabled:cursor-wait"
+            >
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-neutral-800 truncate">{account.description}</p>
+                <p className="text-[10px] text-neutral-400 truncate">{account.name}</p>
+              </div>
+              {demoLoading === account.email && (
+                <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="relative mb-6">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-neutral-200" />
+        </div>
+        <div className="relative flex justify-center text-xs">
+          <span className="bg-white px-3 text-neutral-400">ou entre com sua conta</span>
         </div>
       </div>
 

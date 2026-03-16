@@ -105,6 +105,43 @@ export const authService = {
     return { user, token };
   },
 
+  async demoLogin(email: string): Promise<LoginResult> {
+    if (USE_API) {
+      try {
+        const response = await api.post<{
+          user: {
+            id: string;
+            email: string;
+            firstName: string;
+            lastName: string;
+            fullName: string;
+            phoneNumber?: string;
+            emailVerified: boolean;
+            isActive: boolean;
+            createdAt: string;
+            roles: string[];
+            tenantId?: string;
+          };
+          accessToken: string;
+          refreshToken: string;
+          expiresAt: string;
+        }>('/auth/demo-login', { email });
+        const user = mapApiUser(response.user);
+        setItem(STORAGE_KEY, {
+          user,
+          token: response.accessToken,
+          refreshToken: response.refreshToken,
+        });
+        return { user, token: response.accessToken, refreshToken: response.refreshToken };
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Erro no login demo';
+        throw new Error(message);
+      }
+    }
+    // Fallback: use normal mock login
+    return this.login(email, 'demo');
+  },
+
   async register(data: RegisterData): Promise<LoginResult> {
     if (USE_API) {
       try {
