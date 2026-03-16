@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft, CalendarDays, Clock, Users, MapPin, Copy, Check,
+  ArrowLeft, Clock, Users, MapPin, Copy,
   Phone, MessageSquare, Star, Wifi, Car, Wind, Coffee,
   Dumbbell, Waves, UtensilsCrossed, Tv, Lock, PawPrint,
   LogIn, LogOut, AlertTriangle, Ban, Download, Share2,
-  ChevronDown, ChevronUp, Shield, Info, ListChecks, Sparkles,
-  Home, CreditCard, HelpCircle, CheckCircle2,
+  ChevronDown, ChevronUp, Shield, ListChecks, Sparkles,
+  CreditCard, HelpCircle, CheckCircle2,
 } from 'lucide-react';
 import { format, parseISO, differenceInDays, isFuture, isPast, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -525,7 +525,6 @@ export function BookingDetailPage() {
 
 /* ═══ Collapsible Section ═══ */
 function CollapsibleSection({
-  id,
   title,
   icon: Icon,
   iconColor,

@@ -11,7 +11,7 @@ import { useAuthStore } from '../../../store/auth.store';
 import { BookingStatusBadge } from '../../../components/shared/BookingStatusBadge';
 import { Spinner } from '../../../components/ui/Spinner';
 import { formatCurrency } from '../../../utils/formatters';
-import type { Booking, BookingStatus } from '../../../types';
+import type { Booking } from '../../../types';
 
 type TabFilter = 'all' | 'upcoming' | 'active' | 'past' | 'cancelled';
 
