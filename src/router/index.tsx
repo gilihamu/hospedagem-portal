@@ -90,10 +90,38 @@ function NotFoundPage() {
   );
 }
 
+function RouteErrorBoundary() {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+      <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center mb-6">
+        <span className="text-4xl">⚠️</span>
+      </div>
+      <h1 className="text-2xl font-bold text-neutral-800 mb-2">
+        <span>Algo deu errado</span>
+      </h1>
+      <p className="text-neutral-500 mb-6 max-w-md">
+        <span>Ocorreu um erro inesperado. Se o problema persistir, tente desativar extensões de tradução do navegador e recarregar.</span>
+      </p>
+      <div className="flex gap-3">
+        <button
+          onClick={() => window.location.reload()}
+          className="bg-primary text-white px-6 py-2.5 rounded-lg font-medium hover:bg-primary-light transition-colors"
+        >
+          <span>Recarregar página</span>
+        </button>
+        <a href="/" className="bg-neutral-100 text-neutral-700 px-6 py-2.5 rounded-lg font-medium hover:bg-neutral-200 transition-colors">
+          <span>Voltar ao início</span>
+        </a>
+      </div>
+    </div>
+  );
+}
+
 export const router = createBrowserRouter([
   // Public routes
   {
     element: <PublicLayout />,
+    errorElement: <RouteErrorBoundary />,
     children: [
       { path: ROUTES.HOME, element: withSuspense(Home) },
       { path: ROUTES.SEARCH, element: withSuspense(Search) },
@@ -113,6 +141,7 @@ export const router = createBrowserRouter([
   // Auth routes (guest only)
   {
     element: <GuestGuard />,
+    errorElement: <RouteErrorBoundary />,
     children: [
       {
         element: <AuthLayout />,
@@ -136,6 +165,7 @@ export const router = createBrowserRouter([
         children: [
           {
             element: <DashboardLayout />,
+            errorElement: <RouteErrorBoundary />,
             children: [
               { path: ROUTES.DASHBOARD, element: withSuspense(DashboardOverview) },
               { path: ROUTES.DASHBOARD_ONBOARDING, element: withSuspense(DashboardOnboarding) },
@@ -167,6 +197,7 @@ export const router = createBrowserRouter([
         children: [
           {
             element: <AdminLayout />,
+            errorElement: <RouteErrorBoundary />,
             children: [
               { path: ROUTES.ADMIN, element: withSuspense(AdminOverview) },
               { path: ROUTES.ADMIN_USERS, element: withSuspense(AdminUsers) },

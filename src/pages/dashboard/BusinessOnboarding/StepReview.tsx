@@ -48,31 +48,31 @@ export function StepReview({ onBack, onComplete, isLoading }: Props) {
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
               <div>
                 <dt className="text-neutral-500">Nome Fantasia</dt>
-                <dd className="font-medium text-neutral-800">{businessData.name || '—'}</dd>
+                <dd className="font-medium text-neutral-800"><span>{businessData.name || '—'}</span></dd>
               </div>
               <div>
                 <dt className="text-neutral-500">Razão Social</dt>
-                <dd className="font-medium text-neutral-800">{businessData.legalName || '—'}</dd>
+                <dd className="font-medium text-neutral-800"><span>{businessData.legalName || '—'}</span></dd>
               </div>
               <div>
                 <dt className="text-neutral-500">Documento</dt>
                 <dd className="font-medium text-neutral-800">
-                  {businessData.documentType?.toUpperCase()}: {businessData.document || '—'}
+                  <span>{businessData.documentType?.toUpperCase()}: {businessData.document || '—'}</span>
                 </dd>
               </div>
               <div>
                 <dt className="text-neutral-500">Tipo de Negócio</dt>
                 <dd className="font-medium text-neutral-800">
-                  {businessData.type ? BUSINESS_TYPES[businessData.type] : '—'}
+                  <span>{businessData.type ? BUSINESS_TYPES[businessData.type] : '—'}</span>
                 </dd>
               </div>
               <div>
                 <dt className="text-neutral-500">Telefone</dt>
-                <dd className="font-medium text-neutral-800">{businessData.phone || '—'}</dd>
+                <dd className="font-medium text-neutral-800"><span>{businessData.phone || '—'}</span></dd>
               </div>
               <div>
                 <dt className="text-neutral-500">Email</dt>
-                <dd className="font-medium text-neutral-800">{businessData.email || '—'}</dd>
+                <dd className="font-medium text-neutral-800"><span>{businessData.email || '—'}</span></dd>
               </div>
             </dl>
           </div>

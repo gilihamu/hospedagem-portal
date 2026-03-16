@@ -191,19 +191,19 @@ export function BusinessOnboardingPage() {
             {businessData.name && (
               <span className="flex items-center gap-2 text-success">
                 <CheckCircle2 className="w-4 h-4" />
-                Empresa: {businessData.name}
+                <span>Empresa: {businessData.name}</span>
               </span>
             )}
             {selectedChannels.length > 0 && (
               <span className="flex items-center gap-2 text-success">
                 <CheckCircle2 className="w-4 h-4" />
-                {selectedChannels.length} canais selecionados
+                <span>{selectedChannels.length} canais selecionados</span>
               </span>
             )}
             {(importedPropertyIds.length > 0 || manualPropertyId) && (
               <span className="flex items-center gap-2 text-success">
                 <CheckCircle2 className="w-4 h-4" />
-                {importedPropertyIds.length + (manualPropertyId ? 1 : 0)} acomodações
+                <span>{importedPropertyIds.length + (manualPropertyId ? 1 : 0)} acomodações</span>
               </span>
             )}
           </div>
