@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Building2, Bell, ChevronDown, Menu, X, LogOut, User, LayoutDashboard, Shield } from 'lucide-react';
+import { Building2, Bell, ChevronDown, Menu, X, LogOut, User, LayoutDashboard, Shield, Luggage } from 'lucide-react';
 import { useAuthStore } from '../../store/auth.store';
 import { authService } from '../../services/auth.service';
 import { Avatar } from '../ui/Avatar';
@@ -98,6 +98,14 @@ export function Header() {
                     >
                       {user.role === 'admin' ? <Shield className="w-4 h-4" /> : <LayoutDashboard className="w-4 h-4" />}
                       {user.role === 'admin' ? 'Painel Admin' : 'Meu Painel'}
+                    </Link>
+                    <Link
+                      to={ROUTES.MY_BOOKINGS}
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-neutral-700 hover:bg-surface-muted transition-colors"
+                    >
+                      <Luggage className="w-4 h-4" />
+                      Minhas Reservas
                     </Link>
                     <Link
                       to={ROUTES.DASHBOARD_PROFILE}

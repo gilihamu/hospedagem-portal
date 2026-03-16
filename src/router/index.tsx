@@ -76,6 +76,10 @@ const GuestPortal = lazy(() => import('../pages/guest/GuestPortal').then(m => ({
 // Messages
 const Messages = lazy(() => import('../pages/messages').then(m => ({ default: m.MessagesPage })));
 
+// Guest - My Bookings
+const MyBookings = lazy(() => import('../pages/guest/MyBookings').then(m => ({ default: m.MyBookingsPage })));
+const MyBookingDetail = lazy(() => import('../pages/guest/MyBookings/BookingDetail').then(m => ({ default: m.BookingDetailPage })));
+
 // 404
 function NotFoundPage() {
   return (
@@ -133,6 +137,8 @@ export const router = createBrowserRouter([
           { path: ROUTES.BOOKING, element: withSuspense(Booking) },
           { path: ROUTES.MESSAGES, element: withSuspense(Messages) },
           { path: ROUTES.MESSAGE_DETAIL, element: withSuspense(Messages) },
+          { path: ROUTES.MY_BOOKINGS, element: withSuspense(MyBookings) },
+          { path: ROUTES.MY_BOOKING_DETAIL, element: withSuspense(MyBookingDetail) },
         ],
       },
     ],

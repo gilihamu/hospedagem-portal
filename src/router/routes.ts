@@ -35,6 +35,8 @@ export const ROUTES = {
   MESSAGE_DETAIL: '/messages/:id',
   GUEST_PORTAL: '/stay/:code',
   PORTFOLIO: '/portfolio/:slug',
+  MY_BOOKINGS: '/my-bookings',
+  MY_BOOKING_DETAIL: '/my-bookings/:id',
 };
 
 export function propertyRoute(id: string) {
