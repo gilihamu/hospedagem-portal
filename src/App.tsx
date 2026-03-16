@@ -11,7 +11,7 @@ const queryClient = new QueryClient({
 export default function App() {
   return (
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient} translate="no">
+      <QueryClientProvider client={queryClient}>
         <RouterProvider router={router} />
         <ToastContainer />
       </QueryClientProvider>
