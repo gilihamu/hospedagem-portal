@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { CheckCircle, XCircle, Calendar, LayoutList, CalendarDays } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { CheckCircle, XCircle, Calendar, LayoutList, CalendarDays, Phone } from 'lucide-react';
 import { useAuthStore } from '../../../store/auth.store';
 import { useHostBookings, useUpdateBookingStatus } from '../../../hooks/useBookings';
 import { Tabs } from '../../../components/ui/Tabs';
@@ -8,10 +9,12 @@ import { BookingStatusBadge } from '../../../components/shared/BookingStatusBadg
 import { ChannelBadge } from '../../../components/shared/ChannelBadge';
 import { ConfirmDialog } from '../../../components/shared/ConfirmDialog';
 import { Spinner } from '../../../components/ui/Spinner';
+import { Button } from '../../../components/ui/Button';
 import { useToast } from '../../../hooks/useToast';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import { CalendarView } from './CalendarView';
 import { cn } from '../../../utils/cn';
+import { ROUTES } from '../../../router/routes';
 import type { Booking, BookingStatus } from '../../../types';
 
 type ViewMode = 'list' | 'calendar';
@@ -69,7 +72,15 @@ export function BookingsPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-1 bg-surface-muted rounded-lg p-1 border border-surface-border">
+        <div className="flex items-center gap-3">
+          <Link to={ROUTES.DASHBOARD_BOOKINGS_NEW}>
+            <Button size="sm">
+              <Phone className="w-4 h-4 mr-1.5" />
+              Nova Reserva
+            </Button>
+          </Link>
+
+          <div className="flex items-center gap-1 bg-surface-muted rounded-lg p-1 border border-surface-border">
           <button
             onClick={() => setView('list')}
             className={cn(
@@ -92,10 +103,11 @@ export function BookingsPage() {
             )}
           >
             <CalendarDays className="w-3.5 h-3.5" />
-            Calendário
-          </button>
-        </div>
-      </div>
+                 Calendário
+                </button>
+              </div>
+              </div>
+            </div>
 
       {/* Calendar view */}
       {view === 'calendar' && <CalendarView bookings={bookings || []} />}

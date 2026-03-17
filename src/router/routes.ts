@@ -16,6 +16,7 @@ export const ROUTES = {
   DASHBOARD_BRANCHES: '/dashboard/branches',
   DASHBOARD_BRANCHES_NEW: '/dashboard/branches/new',
   DASHBOARD_BOOKINGS: '/dashboard/bookings',
+  DASHBOARD_BOOKINGS_NEW: '/dashboard/bookings/new',
   DASHBOARD_BOOKINGS_CALENDAR: '/dashboard/bookings/calendar',
   DASHBOARD_ANALYTICS: '/dashboard/analytics',
   DASHBOARD_PAYMENTS: '/dashboard/payments',
