@@ -1,4 +1,4 @@
-import { useRef, useState, type DragEvent, type ChangeEvent } from 'react';
+import { useRef, useState, useEffect, type DragEvent, type ChangeEvent } from 'react';
 import { Upload, X, Image } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
@@ -20,6 +20,13 @@ export function FileUpload({
   const [previews, setPreviews] = useState<string[]>(existingFiles);
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Sync previews when existingFiles prop changes (e.g., after form reset with API data)
+  useEffect(() => {
+    if (existingFiles.length > 0 && previews.length === 0) {
+      setPreviews(existingFiles);
+    }
+  }, [existingFiles]);
 
   function processFiles(files: FileList) {
     const remaining = maxFiles - previews.length;
