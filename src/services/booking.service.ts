@@ -30,6 +30,7 @@ export interface CreateBookingData {
   checkOut: string;
   guests: number;
   specialRequests?: string;
+  customPricePerNight?: number;
 }
 
 export interface PriceBreakdown {

@@ -25,6 +25,7 @@ const schema = z.object({
   checkIn: z.string().min(1, 'Data de check-in obrigatória'),
   checkOut: z.string().min(1, 'Data de check-out obrigatória'),
   guests: z.coerce.number().min(1, 'Mínimo 1 hóspede').max(50),
+  customPricePerNight: z.coerce.number().min(0).optional(),
   specialRequests: z.string().optional(),
 }).refine(data => {
   if (data.checkIn && data.checkOut) {
@@ -59,10 +60,16 @@ export function NewBookingPage() {
   const watchPropertyId = watch('propertyId');
   const watchCheckIn = watch('checkIn');
   const watchCheckOut = watch('checkOut');
+  const watchCustomPrice = watch('customPricePerNight');
 
   const selectedProperty = useMemo(
     () => properties?.find(p => p.id === watchPropertyId),
     [properties, watchPropertyId],
+  );
+
+  const effectivePrice = useMemo(
+    () => (watchCustomPrice && watchCustomPrice > 0) ? watchCustomPrice : selectedProperty?.pricePerNight ?? 0,
+    [watchCustomPrice, selectedProperty],
   );
 
   const nights = useMemo(() => {
@@ -75,10 +82,10 @@ export function NewBookingPage() {
 
   const pricePreview = useMemo(() => {
     if (!selectedProperty || nights <= 0) return null;
-    const subtotal = selectedProperty.pricePerNight * nights;
+    const subtotal = effectivePrice * nights;
     const taxes = subtotal * 0.1;
     return { subtotal, taxes, total: subtotal + taxes };
-  }, [selectedProperty, nights]);
+  }, [selectedProperty, nights, effectivePrice]);
 
   const propertyOptions = useMemo(
     () => (properties || [])
@@ -99,6 +106,7 @@ export function NewBookingPage() {
         checkOut: new Date(data.checkOut).toISOString(),
         guests: data.guests,
         specialRequests: data.specialRequests,
+        customPricePerNight: (data.customPricePerNight && data.customPricePerNight > 0) ? data.customPricePerNight : undefined,
       });
       setConfirmed(booking);
       success('Reserva criada com sucesso!');
@@ -197,6 +205,22 @@ export function NewBookingPage() {
                 {...register('guests')}
               />
             </div>
+            {selectedProperty && (
+              <div className="mt-2">
+                <Input
+                  label={`Valor por noite (R$) — padrão: ${formatCurrency(selectedProperty.pricePerNight)}`}
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  placeholder={selectedProperty.pricePerNight.toString()}
+                  error={errors.customPricePerNight?.message}
+                  {...register('customPricePerNight')}
+                />
+                <p className="text-xs text-neutral-400 mt-1">
+                  Deixe em branco para usar o preço padrão da propriedade. Preencha para aplicar um valor especial.
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -231,7 +255,10 @@ export function NewBookingPage() {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-neutral-500">
-                  {formatCurrency(selectedProperty!.pricePerNight)} × {nights} noite{nights > 1 ? 's' : ''}
+                  {formatCurrency(effectivePrice)} × {nights} noite{nights > 1 ? 's' : ''}
+                  {watchCustomPrice && watchCustomPrice > 0 && watchCustomPrice !== selectedProperty?.pricePerNight && (
+                    <span className="ml-1 text-xs text-amber-600 font-medium">(valor especial)</span>
+                  )}
                 </span>
                 <span>{formatCurrency(pricePreview.subtotal)}</span>
               </div>
