@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { DollarSign, Calendar, Building2, Star, Plus, BarChart3 } from 'lucide-react';
+import { DollarSign, Calendar, Building2, Star, Plus, BarChart3, Phone } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useAuthStore } from '../../../store/auth.store';
 import { useAnalyticsSummary, useRevenueData } from '../../../hooks/useAnalytics';
@@ -34,11 +34,14 @@ export function OverviewPage() {
           <p className="text-neutral-500 capitalize">{today}</p>
         </div>
         <div className="flex gap-2">
+          <Link to={ROUTES.DASHBOARD_BOOKINGS_NEW}>
+            <Button leftIcon={<Phone className="w-4 h-4" />} size="sm">Nova Reserva</Button>
+          </Link>
           <Link to={ROUTES.DASHBOARD_PROPERTY_NEW}>
-            <Button leftIcon={<Plus className="w-4 h-4" />} size="sm">Nova Propriedade</Button>
+            <Button variant="outline" leftIcon={<Plus className="w-4 h-4" />} size="sm">Nova Propriedade</Button>
           </Link>
           <Link to={ROUTES.DASHBOARD_BOOKINGS}>
-            <Button variant="outline" size="sm" leftIcon={<Calendar className="w-4 h-4" />}>Ver Reservas</Button>
+            <Button variant="ghost" size="sm" leftIcon={<Calendar className="w-4 h-4" />}>Ver Reservas</Button>
           </Link>
         </div>
       </div>
