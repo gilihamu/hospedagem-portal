@@ -170,8 +170,9 @@ export function PropertyCalendarPage() {
       const fresh = await api.get<CalendarDayData[]>(`/properties/${id}/calendar?from=${from}&to=${to}`);
       setCalendarData(fresh);
       clearSelection();
-    } catch {
-      showError('Erro ao salvar alterações');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Erro ao salvar alterações';
+      showError(msg);
     } finally {
       setSaving(false);
     }

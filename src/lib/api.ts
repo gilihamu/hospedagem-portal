@@ -58,6 +58,17 @@ class ApiClient {
     });
 
     if (!response.ok) {
+      // Handle expired token: clear auth and redirect to login
+      if (response.status === 401) {
+        try {
+          localStorage.removeItem('hbs_auth');
+        } catch { /* ignore */ }
+        const error = new Error('Sessão expirada. Faça login novamente.');
+        // Redirect to login after a small delay so the toast can show
+        setTimeout(() => { window.location.href = '/login'; }, 1500);
+        throw error;
+      }
+
       const error: ApiError = await response.json().catch(() => ({
         code: 'Unknown',
         message: response.statusText,
