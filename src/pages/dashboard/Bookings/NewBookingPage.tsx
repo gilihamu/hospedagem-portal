@@ -1,23 +1,45 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Phone, UserPlus, CalendarPlus, ArrowLeft, CheckCircle } from 'lucide-react';
+import { Phone, UserPlus, CalendarPlus, ArrowLeft, CheckCircle, Search, X, User as UserIcon } from 'lucide-react';
 import { Input } from '../../../components/ui/Input';
 import { Textarea } from '../../../components/ui/Textarea';
 import { Select } from '../../../components/ui/Select';
 import { Button } from '../../../components/ui/Button';
+import { Modal } from '../../../components/ui/Modal';
+import { Spinner } from '../../../components/ui/Spinner';
 import { useAuthStore } from '../../../store/auth.store';
 import { useOwnerProperties } from '../../../hooks/useProperties';
 import { useCreateBooking } from '../../../hooks/useBookings';
 import { useToast } from '../../../hooks/useToast';
 import { formatCurrency } from '../../../utils/formatters';
 import { differenceInDays } from '../../../utils/dates';
+import { api } from '../../../lib/api';
+import { authService } from '../../../services/auth.service';
 import { ROUTES } from '../../../router/routes';
 import type { Booking } from '../../../types';
 
-const schema = z.object({
+// ─── Types ──────────────────────────────────────────────────
+interface GuestResult {
+  id: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  email: string;
+  phoneNumber?: string;
+}
+
+interface SelectedGuest {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+}
+
+// ─── Schemas ────────────────────────────────────────────────
+const bookingSchema = z.object({
   propertyId: z.string().min(1, 'Selecione uma propriedade'),
   guestName: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres'),
   guestEmail: z.string().email('E-mail inválido').or(z.literal('')).optional(),
@@ -34,18 +56,68 @@ const schema = z.object({
   return true;
 }, { message: 'Check-out deve ser após check-in', path: ['checkOut'] });
 
-type FormData = z.infer<typeof schema>;
+const newGuestSchema = z.object({
+  name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres'),
+  email: z.string().email('E-mail inválido'),
+  phone: z.string().min(10, 'Telefone inválido'),
+  password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
+});
 
+type BookingFormData = z.infer<typeof bookingSchema>;
+type NewGuestFormData = z.infer<typeof newGuestSchema>;
+
+// ─── Guest Search Hook ──────────────────────────────────────
+function useGuestSearch() {
+  const [results, setResults] = useState<GuestResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  const search = useCallback((query: string) => {
+    clearTimeout(timerRef.current);
+    if (query.length < 2) {
+      setResults([]);
+      return;
+    }
+    setLoading(true);
+    timerRef.current = setTimeout(async () => {
+      try {
+        const data = await api.get<GuestResult[]>('/auth/users/search', { q: query, limit: '8' });
+        setResults(data);
+      } catch {
+        setResults([]);
+      } finally {
+        setLoading(false);
+      }
+    }, 350);
+  }, []);
+
+  const clear = useCallback(() => {
+    setResults([]);
+    setLoading(false);
+  }, []);
+
+  return { results, loading, search, clear };
+}
+
+// ─── Page Component ─────────────────────────────────────────
 export function NewBookingPage() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const { data: properties, isLoading: loadingProps } = useOwnerProperties(user?.id);
   const createBooking = useCreateBooking();
   const { success, error: showError } = useToast();
-  const [confirmed, setConfirmed] = useState<Booking | null>(null);
 
-  const { register, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm<FormData>({
-    resolver: zodResolver(schema) as Resolver<FormData>,
+  const [confirmed, setConfirmed] = useState<Booking | null>(null);
+  const [selectedGuest, setSelectedGuest] = useState<SelectedGuest | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [showNewGuestModal, setShowNewGuestModal] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  const { results: guestResults, loading: searchLoading, search: searchGuests, clear: clearSearch } = useGuestSearch();
+
+  const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<BookingFormData>({
+    resolver: zodResolver(bookingSchema) as Resolver<BookingFormData>,
     defaultValues: {
       propertyId: '',
       guests: 1,
@@ -57,6 +129,58 @@ export function NewBookingPage() {
     },
   });
 
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  // ─── Guest selection ─────────────────────────────────────
+  const handleSelectGuest = (guest: GuestResult) => {
+    const selected: SelectedGuest = {
+      id: guest.id,
+      name: guest.fullName,
+      email: guest.email,
+      phone: guest.phoneNumber || '',
+    };
+    setSelectedGuest(selected);
+    setValue('guestName', selected.name);
+    setValue('guestEmail', selected.email);
+    setValue('guestPhone', selected.phone);
+    setSearchQuery('');
+    setShowDropdown(false);
+    clearSearch();
+  };
+
+  const handleClearGuest = () => {
+    setSelectedGuest(null);
+    setValue('guestName', '');
+    setValue('guestEmail', '');
+    setValue('guestPhone', '');
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    setShowDropdown(true);
+    searchGuests(value);
+  };
+
+  // ─── New guest registered via modal ──────────────────────
+  const handleGuestRegistered = (guest: SelectedGuest) => {
+    setSelectedGuest(guest);
+    setValue('guestName', guest.name);
+    setValue('guestEmail', guest.email);
+    setValue('guestPhone', guest.phone);
+    setShowNewGuestModal(false);
+    success('Hóspede cadastrado e selecionado!');
+  };
+
+  // ─── Form watches ────────────────────────────────────────
   const watchPropertyId = watch('propertyId');
   const watchCheckIn = watch('checkIn');
   const watchCheckOut = watch('checkOut');
@@ -94,11 +218,11 @@ export function NewBookingPage() {
     [properties],
   );
 
-  const onSubmit = async (data: FormData) => {
+  const onSubmit = async (data: BookingFormData) => {
     try {
       const booking = await createBooking.mutateAsync({
         propertyId: data.propertyId,
-        guestId: user?.id || '',
+        guestId: selectedGuest?.id || user?.id || '',
         guestName: data.guestName,
         guestEmail: data.guestEmail || '',
         guestPhone: data.guestPhone,
@@ -115,7 +239,7 @@ export function NewBookingPage() {
     }
   };
 
-  // ─── Confirmation screen ──────────────────────────────────
+  // ─── Confirmation screen ─────────────────────────────────
   if (confirmed) {
     return (
       <div className="max-w-lg mx-auto text-center space-y-6 py-12">
@@ -140,7 +264,7 @@ export function NewBookingPage() {
           <Button variant="outline" onClick={() => navigate(ROUTES.DASHBOARD_BOOKINGS)}>
             Ver Reservas
           </Button>
-          <Button onClick={() => { setConfirmed(null); }}>
+          <Button onClick={() => { setConfirmed(null); setSelectedGuest(null); }}>
             Nova Reserva
           </Button>
         </div>
@@ -217,7 +341,7 @@ export function NewBookingPage() {
                   {...register('customPricePerNight')}
                 />
                 <p className="text-xs text-neutral-400 mt-1">
-                  Deixe em branco para usar o preço padrão da propriedade. Preencha para aplicar um valor especial.
+                  Deixe em branco para usar o preço padrão. Preencha para aplicar um valor especial.
                 </p>
               </div>
             )}
@@ -228,20 +352,117 @@ export function NewBookingPage() {
         <div className="card-base p-5">
           <h2 className="font-semibold text-neutral-800 mb-4 flex items-center gap-2">
             <UserPlus className="w-4 h-4" />
-            Dados do Hóspede
+            Hóspede
           </h2>
-          <p className="text-xs text-neutral-400 mb-4">
-            Informe os dados do hóspede. Se não estiver cadastrado, a reserva será criada com os dados informados.
-          </p>
-          <div className="space-y-4">
-            <Input label="Nome completo *" placeholder="Ex: Maria Santos" error={errors.guestName?.message} {...register('guestName')} />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Input label="Telefone *" placeholder="+55 (48) 99999-0000" error={errors.guestPhone?.message} {...register('guestPhone')} />
-              <Input label="E-mail" placeholder="email@exemplo.com (opcional)" error={errors.guestEmail?.message} {...register('guestEmail')} />
+
+          {/* Selected guest badge */}
+          {selectedGuest ? (
+            <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                  <UserIcon className="w-5 h-5 text-green-700" />
+                </div>
+                <div>
+                  <p className="font-medium text-sm text-green-900">{selectedGuest.name}</p>
+                  <p className="text-xs text-green-600">{selectedGuest.email}{selectedGuest.phone ? ` · ${selectedGuest.phone}` : ''}</p>
+                </div>
+              </div>
+              <button type="button" onClick={handleClearGuest} className="p-1 rounded hover:bg-green-100 text-green-600">
+                <X className="w-4 h-4" />
+              </button>
             </div>
+          ) : (
+            <>
+              {/* Search field */}
+              <div ref={searchRef} className="relative mb-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    onFocus={() => searchQuery.length >= 2 && setShowDropdown(true)}
+                    placeholder="Buscar hóspede por nome, e-mail ou telefone..."
+                    className="w-full pl-10 pr-4 py-2.5 border border-surface-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  />
+                  {searchLoading && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <Spinner size="sm" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Search dropdown */}
+                {showDropdown && searchQuery.length >= 2 && (
+                  <div className="absolute z-20 w-full mt-1 bg-white border border-surface-border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    {guestResults.length > 0 ? (
+                      guestResults.map((g) => (
+                        <button
+                          key={g.id}
+                          type="button"
+                          onClick={() => handleSelectGuest(g)}
+                          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-surface-muted text-left transition-colors border-b border-surface-border last:border-0"
+                        >
+                          <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+                            <UserIcon className="w-4 h-4 text-primary" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-neutral-800 truncate">{g.fullName}</p>
+                            <p className="text-xs text-neutral-400 truncate">{g.email}{g.phoneNumber ? ` · ${g.phoneNumber}` : ''}</p>
+                          </div>
+                        </button>
+                      ))
+                    ) : !searchLoading ? (
+                      <div className="px-4 py-6 text-center">
+                        <p className="text-sm text-neutral-500 mb-3">Nenhum hóspede encontrado</p>
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => { setShowDropdown(false); setShowNewGuestModal(true); }}
+                          leftIcon={<UserPlus className="w-4 h-4" />}
+                        >
+                          Cadastrar Novo Hóspede
+                        </Button>
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex-1 border-t border-surface-border" />
+                <span className="text-xs text-neutral-400">ou</span>
+                <div className="flex-1 border-t border-surface-border" />
+              </div>
+
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-xs text-neutral-400">Preencha manualmente ou cadastre um novo hóspede</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowNewGuestModal(true)}
+                  leftIcon={<UserPlus className="w-4 h-4" />}
+                >
+                  Novo Hóspede
+                </Button>
+              </div>
+
+              {/* Manual fields */}
+              <div className="space-y-4">
+                <Input label="Nome completo *" placeholder="Ex: Maria Santos" error={errors.guestName?.message} {...register('guestName')} />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Input label="Telefone *" placeholder="+55 (48) 99999-0000" error={errors.guestPhone?.message} {...register('guestPhone')} />
+                  <Input label="E-mail" placeholder="email@exemplo.com (opcional)" error={errors.guestEmail?.message} {...register('guestEmail')} />
+                </div>
+              </div>
+            </>
+          )}
+
+          <div className="mt-4">
             <Textarea
               label="Observações / Pedidos especiais"
-              placeholder="Ex: Quarto no andar térreo, berço extra, alergia a travesseiro de pena..."
+              placeholder="Ex: Quarto no andar térreo, berço extra..."
               rows={3}
               {...register('specialRequests')}
             />
@@ -284,6 +505,81 @@ export function NewBookingPage() {
           </Button>
         </div>
       </form>
+
+      {/* ─── New Guest Modal ──────────────────────────────── */}
+      <NewGuestModal
+        isOpen={showNewGuestModal}
+        onClose={() => setShowNewGuestModal(false)}
+        onGuestCreated={handleGuestRegistered}
+        initialName={searchQuery}
+      />
     </div>
+  );
+}
+
+// ─── New Guest Modal Component ──────────────────────────────
+function NewGuestModal({
+  isOpen, onClose, onGuestCreated, initialName,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onGuestCreated: (guest: SelectedGuest) => void;
+  initialName?: string;
+}) {
+  const { error: showError } = useToast();
+  const [submitting, setSubmitting] = useState(false);
+
+  const { register, handleSubmit, formState: { errors }, reset } = useForm<NewGuestFormData>({
+    resolver: zodResolver(newGuestSchema) as Resolver<NewGuestFormData>,
+    defaultValues: { name: initialName || '', email: '', phone: '', password: '' },
+  });
+
+  useEffect(() => {
+    if (isOpen) {
+      reset({ name: initialName || '', email: '', phone: '', password: '' });
+    }
+  }, [isOpen, initialName, reset]);
+
+  const onSubmit = async (data: NewGuestFormData) => {
+    setSubmitting(true);
+    try {
+      const result = await authService.register({
+        name: data.name,
+        email: data.email,
+        password: data.password,
+        role: 'guest',
+        phone: data.phone,
+      });
+      onGuestCreated({
+        id: result.user.id,
+        name: result.user.name,
+        email: result.user.email,
+        phone: result.user.phone || data.phone,
+      });
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Erro ao cadastrar hóspede');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Cadastrar Novo Hóspede" size="md">
+      <form onSubmit={handleSubmit(onSubmit)} className="p-5 space-y-4">
+        <p className="text-sm text-neutral-500 -mt-2 mb-2">
+          O hóspede será cadastrado e já ficará selecionado na reserva.
+        </p>
+        <Input label="Nome completo *" placeholder="Ex: Maria Santos" error={errors.name?.message} {...register('name')} />
+        <Input label="E-mail *" type="email" placeholder="email@exemplo.com" error={errors.email?.message} {...register('email')} />
+        <Input label="Telefone *" placeholder="+55 (48) 99999-0000" error={errors.phone?.message} {...register('phone')} />
+        <Input label="Senha *" type="password" placeholder="Mínimo 6 caracteres" error={errors.password?.message} {...register('password')} />
+        <div className="flex gap-3 justify-end pt-2">
+          <Button type="button" variant="ghost" onClick={onClose}>Cancelar</Button>
+          <Button type="submit" loading={submitting} leftIcon={<UserPlus className="w-4 h-4" />}>
+            Cadastrar e Selecionar
+          </Button>
+        </div>
+      </form>
+    </Modal>
   );
 }
