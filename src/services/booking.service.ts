@@ -97,9 +97,7 @@ export const bookingService = {
 
   async create(data: CreateBookingData): Promise<Booking> {
     if (USE_API) {
-      try {
-        return await api.post<Booking>('/bookings', data);
-      } catch { /* fallback */ }
+      return await api.post<Booking>('/bookings', data);
     }
     const property = getPropertySync(data.propertyId);
     if (!property) throw new Error('Propriedade não encontrada');
@@ -141,9 +139,7 @@ export const bookingService = {
 
   async updateStatus(id: string, status: BookingStatus): Promise<Booking> {
     if (USE_API) {
-      try {
-        return await api.patch<Booking>(`/bookings/${id}/status`, { status });
-      } catch { /* fallback */ }
+      return await api.patch<Booking>(`/bookings/${id}/status`, { status });
     }
     const stored = getItem<Booking[]>(STORAGE_KEY) || [];
     const isMock = mockBookings.find((b) => b.id === id);
@@ -174,9 +170,7 @@ export const bookingService = {
 
   async cancel(id: string, reason = 'Cancelado pelo usuário'): Promise<Booking> {
     if (USE_API) {
-      try {
-        return await api.post<Booking>(`/bookings/${id}/cancel`, { reason });
-      } catch { /* fallback */ }
+      return await api.post<Booking>(`/bookings/${id}/cancel`, { reason });
     }
     return bookingService.updateStatus(id, 'cancelled');
   },

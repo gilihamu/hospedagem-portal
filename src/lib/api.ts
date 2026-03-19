@@ -4,11 +4,6 @@ interface RequestOptions extends RequestInit {
   params?: Record<string, string>;
 }
 
-interface ApiError {
-  code: string;
-  message: string;
-}
-
 class ApiClient {
   private baseUrl: string;
 
@@ -69,11 +64,9 @@ class ApiClient {
         throw error;
       }
 
-      const error: ApiError = await response.json().catch(() => ({
-        code: 'Unknown',
-        message: response.statusText,
-      }));
-      throw new Error(error.message || 'Request failed');
+      const body = await response.json().catch(() => ({}));
+      const errorMessage = body.error || body.message || body.detail || response.statusText;
+      throw new Error(errorMessage || 'Request failed');
     }
 
     if (response.status === 204) {
