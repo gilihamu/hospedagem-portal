@@ -121,15 +121,15 @@ export function PropertyCalendarPage() {
 
   const handleDayClick = useCallback((day: Date) => {
     if (isBefore(day, new Date()) && !isToday(day)) return;
-    // Don't allow selecting booked or blocked days
+    // Don't allow selecting days with existing bookings
     const dateStr = format(day, 'yyyy-MM-dd');
-    if (bookingsByDay.has(dateStr) || dayDataMap.get(dateStr)?.isBlocked) return;
+    if (bookingsByDay.has(dateStr)) return;
     setSelectedDays(prev => {
       const exists = prev.some(s => isSameDay(s, day));
       if (exists) return prev.filter(s => !isSameDay(s, day));
       return [...prev, day].sort((a, b) => a.getTime() - b.getTime());
     });
-  }, [bookingsByDay, dayDataMap]);
+  }, [bookingsByDay]);
 
   const clearSelection = useCallback(() => {
     setSelectedDays([]);
@@ -213,13 +213,17 @@ export function PropertyCalendarPage() {
   const handleReserve = useCallback(() => {
     if (selectedDays.length === 0 || !property) return;
 
-    // Check if any selected day is booked or blocked
-    const unavailable = selectedDays.filter(d => {
-      const dateStr = format(d, 'yyyy-MM-dd');
-      return bookingsByDay.has(dateStr) || dayDataMap.get(dateStr)?.isBlocked;
-    });
-    if (unavailable.length > 0) {
-      showError('Algumas datas selecionadas não estão disponíveis. Remova-as antes de criar a reserva.');
+    // Check if any selected day has a booking
+    const booked = selectedDays.filter(d => bookingsByDay.has(format(d, 'yyyy-MM-dd')));
+    if (booked.length > 0) {
+      showError('Algumas datas selecionadas já possuem reservas.');
+      return;
+    }
+
+    // Warn if any selected day is blocked
+    const blocked = selectedDays.filter(d => dayDataMap.get(format(d, 'yyyy-MM-dd'))?.isBlocked);
+    if (blocked.length > 0) {
+      showError('Algumas datas selecionadas estão bloqueadas. Desbloqueie-as antes de criar a reserva.');
       return;
     }
 
@@ -316,7 +320,7 @@ export function PropertyCalendarPage() {
                   const hasPrice = data?.priceOverride != null;
                   const hasNote = !!data?.note;
                   const hasMinStay = data?.minStay != null;
-                  const isUnavailable = !!(booking || blocked);
+                  const hasBooking = !!booking;
 
                   return (
                     <div
@@ -326,8 +330,8 @@ export function PropertyCalendarPage() {
                         'relative border-r border-surface-border last:border-0 p-1 min-h-[80px] transition-all',
                         !inMonth && 'bg-neutral-50/80 opacity-40',
                         isPast && 'opacity-30 cursor-not-allowed',
-                        inMonth && !isPast && !isUnavailable && 'cursor-pointer hover:bg-primary/5',
-                        inMonth && !isPast && isUnavailable && 'cursor-not-allowed',
+                        inMonth && !isPast && hasBooking && 'cursor-not-allowed',
+                        inMonth && !isPast && !hasBooking && 'cursor-pointer hover:bg-primary/5',
                         selected && 'ring-2 ring-inset ring-primary bg-primary/10',
                         blocked && !selected && 'bg-rose-50',
                         booking && !selected && !blocked && 'bg-sky-50',
