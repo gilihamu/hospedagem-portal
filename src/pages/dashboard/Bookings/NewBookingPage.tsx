@@ -17,7 +17,6 @@ import { useToast } from '../../../hooks/useToast';
 import { formatCurrency } from '../../../utils/formatters';
 import { differenceInDays } from '../../../utils/dates';
 import { api } from '../../../lib/api';
-import { authService } from '../../../services/auth.service';
 import { ROUTES } from '../../../router/routes';
 import type { Booking } from '../../../types';
 
@@ -60,7 +59,6 @@ const newGuestSchema = z.object({
   name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres'),
   email: z.string().email('E-mail inválido'),
   phone: z.string().min(10, 'Telefone inválido'),
-  password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
 });
 
 type BookingFormData = z.infer<typeof bookingSchema>;
@@ -531,30 +529,34 @@ function NewGuestModal({
 
   const { register, handleSubmit, formState: { errors }, reset } = useForm<NewGuestFormData>({
     resolver: zodResolver(newGuestSchema) as Resolver<NewGuestFormData>,
-    defaultValues: { name: initialName || '', email: '', phone: '', password: '' },
+    defaultValues: { name: initialName || '', email: '', phone: '' },
   });
 
   useEffect(() => {
     if (isOpen) {
-      reset({ name: initialName || '', email: '', phone: '', password: '' });
+      reset({ name: initialName || '', email: '', phone: '' });
     }
   }, [isOpen, initialName, reset]);
 
   const onSubmit = async (data: NewGuestFormData) => {
     setSubmitting(true);
     try {
-      const result = await authService.register({
-        name: data.name,
+      const [firstName, ...rest] = data.name.split(' ');
+      const lastName = rest.join(' ') || firstName;
+      const guestUser = await api.post<{
+        id: string; email: string; firstName: string; lastName: string;
+        fullName: string; phoneNumber?: string;
+      }>('/auth/register-guest', {
+        firstName,
+        lastName,
         email: data.email,
-        password: data.password,
-        role: 'guest',
-        phone: data.phone,
+        phoneNumber: data.phone,
       });
       onGuestCreated({
-        id: result.user.id,
-        name: result.user.name,
-        email: result.user.email,
-        phone: result.user.phone || data.phone,
+        id: guestUser.id,
+        name: guestUser.fullName,
+        email: guestUser.email,
+        phone: guestUser.phoneNumber || data.phone,
       });
     } catch (err) {
       showError(err instanceof Error ? err.message : 'Erro ao cadastrar hóspede');
@@ -567,12 +569,12 @@ function NewGuestModal({
     <Modal isOpen={isOpen} onClose={onClose} title="Cadastrar Novo Hóspede" size="md">
       <form onSubmit={handleSubmit(onSubmit)} className="p-5 space-y-4">
         <p className="text-sm text-neutral-500 -mt-2 mb-2">
-          O hóspede será cadastrado e já ficará selecionado na reserva.
+          O hóspede será cadastrado com uma senha gerada automaticamente.
+          As credenciais e instruções serão enviadas por e-mail e WhatsApp.
         </p>
         <Input label="Nome completo *" placeholder="Ex: Maria Santos" error={errors.name?.message} {...register('name')} />
         <Input label="E-mail *" type="email" placeholder="email@exemplo.com" error={errors.email?.message} {...register('email')} />
-        <Input label="Telefone *" placeholder="+55 (48) 99999-0000" error={errors.phone?.message} {...register('phone')} />
-        <Input label="Senha *" type="password" placeholder="Mínimo 6 caracteres" error={errors.password?.message} {...register('password')} />
+        <Input label="Telefone (WhatsApp) *" placeholder="+55 (48) 99999-0000" error={errors.phone?.message} {...register('phone')} />
         <div className="flex gap-3 justify-end pt-2">
           <Button type="button" variant="ghost" onClick={onClose}>Cancelar</Button>
           <Button type="submit" loading={submitting} leftIcon={<UserPlus className="w-4 h-4" />}>
