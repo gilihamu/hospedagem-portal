@@ -1,17 +1,22 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   ChevronLeft, ChevronRight, Building2, MapPin, Moon, CreditCard,
+  CalendarPlus, X,
 } from 'lucide-react';
 import {
   format, startOfMonth, endOfMonth, startOfWeek, endOfWeek,
   addMonths, subMonths, eachDayOfInterval, isSameMonth,
-  isToday, parseISO, isBefore, isAfter, differenceInDays,
+  isToday, parseISO, isBefore, isAfter, isSameDay,
+  differenceInDays, addDays,
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { Booking, BookingStatus } from '../../../types';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import { BookingStatusBadge } from '../../../components/shared/BookingStatusBadge';
+import { Button } from '../../../components/ui/Button';
 import { cn } from '../../../utils/cn';
+import { ROUTES } from '../../../router/routes';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const DAY_HEADERS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -106,8 +111,53 @@ interface CalendarViewProps {
 }
 
 export function CalendarView({ bookings }: CalendarViewProps) {
+  const navigate = useNavigate();
   const [month, setMonth] = useState(new Date);
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+  const [selectedCheckIn, setSelectedCheckIn] = useState<Date | null>(null);
+  const [selectedCheckOut, setSelectedCheckOut] = useState<Date | null>(null);
+  const calendarRef = useRef<HTMLDivElement>(null);
+
+  const handleDayClick = useCallback((day: Date) => {
+    // Don't allow selecting past dates
+    if (isBefore(day, new Date()) && !isToday(day)) return;
+
+    if (!selectedCheckIn || selectedCheckOut) {
+      // First click or reset: set check-in
+      setSelectedCheckIn(day);
+      setSelectedCheckOut(null);
+    } else {
+      // Second click: set check-out
+      let ci = selectedCheckIn;
+      let co = day;
+      if (isBefore(co, ci)) { [ci, co] = [co, ci]; }
+      if (isSameDay(ci, co)) { co = addDays(co, 1); }
+      setSelectedCheckIn(ci);
+      setSelectedCheckOut(co);
+    }
+  }, [selectedCheckIn, selectedCheckOut]);
+
+  const handleBookFromCalendar = useCallback(() => {
+    if (!selectedCheckIn) return;
+    const ci = format(selectedCheckIn, 'yyyy-MM-dd');
+    const co = selectedCheckOut ? format(selectedCheckOut, 'yyyy-MM-dd') : format(addDays(selectedCheckIn, 1), 'yyyy-MM-dd');
+    navigate(`${ROUTES.DASHBOARD_BOOKINGS_NEW}?checkIn=${ci}&checkOut=${co}`);
+  }, [selectedCheckIn, selectedCheckOut, navigate]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedCheckIn(null);
+    setSelectedCheckOut(null);
+  }, []);
+
+  const isDayInRange = useCallback((day: Date) => {
+    if (!selectedCheckIn) return false;
+    if (!selectedCheckOut) return isSameDay(day, selectedCheckIn);
+    return (isSameDay(day, selectedCheckIn) || isAfter(day, selectedCheckIn)) &&
+           (isSameDay(day, selectedCheckOut) || isBefore(day, selectedCheckOut));
+  }, [selectedCheckIn, selectedCheckOut]);
+
+  const isDayRangeStart = useCallback((day: Date) => selectedCheckIn ? isSameDay(day, selectedCheckIn) : false, [selectedCheckIn]);
+  const isDayRangeEnd = useCallback((day: Date) => selectedCheckOut ? isSameDay(day, selectedCheckOut) : false, [selectedCheckOut]);
 
   const weeks = useMemo(() => buildWeeks(month), [month]);
   const weekData = useMemo(
@@ -192,7 +242,7 @@ export function CalendarView({ bookings }: CalendarViewProps) {
       </div>
 
       {/* ── Calendar grid ── */}
-      <div className="card-base overflow-hidden">
+      <div ref={calendarRef} className="card-base overflow-hidden relative">
         {/* Day-of-week headers */}
         <div className="grid grid-cols-7 border-b border-surface-border bg-surface-muted/70">
           {DAY_HEADERS.map(h => (
@@ -226,20 +276,32 @@ export function CalendarView({ bookings }: CalendarViewProps) {
                 {week.map((day, di) => {
                   const inMonth = isSameMonth(day, month);
                   const today   = isToday(day);
+                  const inRange = isDayInRange(day);
+                  const isStart = isDayRangeStart(day);
+                  const isEnd   = isDayRangeEnd(day);
+                  const isPast  = isBefore(day, new Date()) && !today;
                   return (
                     <div
                       key={di}
+                      onClick={() => !isPast && inMonth && handleDayClick(day)}
                       className={cn(
-                        'border-r border-surface-border last:border-0 px-1.5 pt-1.5',
+                        'border-r border-surface-border last:border-0 px-1.5 pt-1.5 transition-colors',
                         !inMonth && 'bg-neutral-50/80',
-                        today    && 'bg-primary/[0.03]',
+                        today && !inRange && 'bg-primary/[0.03]',
+                        inMonth && !isPast && 'cursor-pointer hover:bg-primary/5',
+                        isPast && 'opacity-40 cursor-not-allowed',
+                        inRange && !isStart && !isEnd && 'bg-primary/10',
+                        isStart && 'bg-primary/20 rounded-l',
+                        isEnd && 'bg-primary/20 rounded-r',
                       )}
                     >
                       <div className="flex items-start justify-between">
                         <span
                           className={cn(
                             'inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-medium select-none',
-                            today
+                            isStart || isEnd
+                              ? 'bg-primary text-white font-bold'
+                              : today
                               ? 'bg-primary text-white font-bold'
                               : inMonth
                               ? 'text-neutral-700'
@@ -299,6 +361,38 @@ export function CalendarView({ bookings }: CalendarViewProps) {
         })}
       </div>
 
+      {/* ── Selection indicator bar ── */}
+      {selectedCheckIn && (
+        <div className="card-base p-3 flex items-center justify-between gap-3 border-primary/30 bg-primary/5">
+          <div className="flex items-center gap-3 text-sm">
+            <CalendarPlus className="w-4 h-4 text-primary" />
+            <span className="text-neutral-700">
+              <strong className="text-primary">{format(selectedCheckIn, 'dd/MM/yyyy')}</strong>
+              {selectedCheckOut && (
+                <> → <strong className="text-primary">{format(selectedCheckOut, 'dd/MM/yyyy')}</strong>
+                  <span className="text-neutral-400 ml-2">
+                    ({differenceInDays(selectedCheckOut, selectedCheckIn)} noite{differenceInDays(selectedCheckOut, selectedCheckIn) !== 1 ? 's' : ''})
+                  </span>
+                </>
+              )}
+              {!selectedCheckOut && (
+                <span className="text-neutral-400 ml-2">← selecione o check-out</span>
+              )}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="ghost" onClick={clearSelection}>
+              <X className="w-3.5 h-3.5 mr-1" /> Limpar
+            </Button>
+            {selectedCheckOut && (
+              <Button size="sm" onClick={handleBookFromCalendar}>
+                <CalendarPlus className="w-3.5 h-3.5 mr-1" /> Reservar
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── Legend ── */}
       <div className="flex items-center gap-5 flex-wrap px-1">
         {(Object.entries(STATUS) as [BookingStatus, (typeof STATUS)[BookingStatus]][]).map(([, cfg]) => (
@@ -308,7 +402,7 @@ export function CalendarView({ bookings }: CalendarViewProps) {
           </div>
         ))}
         <span className="text-xs text-neutral-400 ml-auto hidden sm:block">
-          Passe o mouse sobre uma reserva para ver os detalhes
+          Clique em um dia para selecionar check-in e check-out
         </span>
       </div>
 

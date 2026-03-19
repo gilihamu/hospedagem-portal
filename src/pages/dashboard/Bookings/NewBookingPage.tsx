@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -100,10 +100,15 @@ function useGuestSearch() {
 // ─── Page Component ─────────────────────────────────────────
 export function NewBookingPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuthStore();
   const { data: properties, isLoading: loadingProps } = useOwnerProperties(user?.id);
   const createBooking = useCreateBooking();
   const { success, error: showError } = useToast();
+
+  // Pre-fill from calendar selection
+  const urlCheckIn = searchParams.get('checkIn') || '';
+  const urlCheckOut = searchParams.get('checkOut') || '';
 
   const [confirmed, setConfirmed] = useState<Booking | null>(null);
   const [selectedGuest, setSelectedGuest] = useState<SelectedGuest | null>(null);
@@ -122,8 +127,8 @@ export function NewBookingPage() {
       guestName: '',
       guestEmail: '',
       guestPhone: '',
-      checkIn: '',
-      checkOut: '',
+      checkIn: urlCheckIn,
+      checkOut: urlCheckOut,
     },
   });
 
