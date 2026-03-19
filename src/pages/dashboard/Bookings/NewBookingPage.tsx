@@ -110,6 +110,18 @@ export function NewBookingPage() {
   const urlCheckIn = searchParams.get('checkIn') || '';
   const urlCheckOut = searchParams.get('checkOut') || '';
   const urlPropertyId = searchParams.get('propertyId') || '';
+  const urlDayPrices = searchParams.get('dayPrices') || '';
+
+  // Parse per-day prices from calendar (format: "2025-07-19:156,2025-07-20:3")
+  const calendarDayPrices = useMemo(() => {
+    if (!urlDayPrices) return null;
+    const map = new Map<string, number>();
+    urlDayPrices.split(',').forEach(entry => {
+      const [date, price] = entry.split(':');
+      if (date && price) map.set(date, Number(price));
+    });
+    return map.size > 0 ? map : null;
+  }, [urlDayPrices]);
 
   const [confirmed, setConfirmed] = useState<Booking | null>(null);
   const [selectedGuest, setSelectedGuest] = useState<SelectedGuest | null>(null);
@@ -208,12 +220,30 @@ export function NewBookingPage() {
     return 0;
   }, [watchCheckIn, watchCheckOut]);
 
+  // Calculate using per-day prices from calendar when available
+  const hasCalendarPrices = calendarDayPrices && calendarDayPrices.size > 0 && !watchCustomPrice;
+
   const pricePreview = useMemo(() => {
     if (!selectedProperty || nights <= 0) return null;
-    const subtotal = effectivePrice * nights;
+
+    let subtotal: number;
+    if (hasCalendarPrices && watchCheckIn) {
+      // Sum each day's specific price from calendar
+      subtotal = 0;
+      const start = new Date(watchCheckIn);
+      for (let i = 0; i < nights; i++) {
+        const d = new Date(start);
+        d.setDate(d.getDate() + i);
+        const dateStr = d.toISOString().split('T')[0];
+        subtotal += calendarDayPrices!.get(dateStr) ?? selectedProperty.pricePerNight;
+      }
+    } else {
+      subtotal = effectivePrice * nights;
+    }
+
     const taxes = subtotal * 0.1;
     return { subtotal, taxes, total: subtotal + taxes };
-  }, [selectedProperty, nights, effectivePrice]);
+  }, [selectedProperty, nights, effectivePrice, hasCalendarPrices, calendarDayPrices, watchCheckIn]);
 
   const propertyOptions = useMemo(
     () => (properties || [])
@@ -478,15 +508,42 @@ export function NewBookingPage() {
           <div className="card-base p-5">
             <h2 className="font-semibold text-neutral-800 mb-3">Resumo do Preço</h2>
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-neutral-500">
-                  {formatCurrency(effectivePrice)} × {nights} noite{nights > 1 ? 's' : ''}
-                  {watchCustomPrice && watchCustomPrice > 0 && watchCustomPrice !== selectedProperty?.pricePerNight && (
-                    <span className="ml-1 text-xs text-amber-600 font-medium">(valor especial)</span>
-                  )}
-                </span>
-                <span>{formatCurrency(pricePreview.subtotal)}</span>
-              </div>
+              {hasCalendarPrices && watchCheckIn ? (
+                <>
+                  {/* Per-day breakdown from calendar */}
+                  {Array.from({ length: nights }, (_, i) => {
+                    const d = new Date(watchCheckIn);
+                    d.setDate(d.getDate() + i);
+                    const dateStr = d.toISOString().split('T')[0];
+                    const dayLabel = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                    const price = calendarDayPrices!.get(dateStr) ?? selectedProperty!.pricePerNight;
+                    const isOverride = calendarDayPrices!.has(dateStr) && price !== selectedProperty!.pricePerNight;
+                    return (
+                      <div key={dateStr} className="flex justify-between">
+                        <span className="text-neutral-500">
+                          {dayLabel}
+                          {isOverride && <span className="ml-1 text-xs text-amber-600 font-medium">(especial)</span>}
+                        </span>
+                        <span>{formatCurrency(price)}</span>
+                      </div>
+                    );
+                  })}
+                  <div className="flex justify-between border-t pt-2 mt-1">
+                    <span className="text-neutral-500">Subtotal ({nights} noite{nights > 1 ? 's' : ''})</span>
+                    <span>{formatCurrency(pricePreview.subtotal)}</span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex justify-between">
+                  <span className="text-neutral-500">
+                    {formatCurrency(effectivePrice)} × {nights} noite{nights > 1 ? 's' : ''}
+                    {watchCustomPrice && watchCustomPrice > 0 && watchCustomPrice !== selectedProperty?.pricePerNight && (
+                      <span className="ml-1 text-xs text-amber-600 font-medium">(valor especial)</span>
+                    )}
+                  </span>
+                  <span>{formatCurrency(pricePreview.subtotal)}</span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-neutral-500">Taxas (10%)</span>
                 <span>{formatCurrency(pricePreview.taxes)}</span>

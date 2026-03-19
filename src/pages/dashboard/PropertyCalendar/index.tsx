@@ -208,12 +208,21 @@ export function PropertyCalendarPage() {
   }, [id, selectedDays, dayDataMap, month, success, showError, clearSelection]);
 
   const handleReserve = useCallback(() => {
-    if (selectedDays.length === 0) return;
+    if (selectedDays.length === 0 || !property) return;
     const sorted = [...selectedDays].sort((a, b) => a.getTime() - b.getTime());
     const ci = format(sorted[0], 'yyyy-MM-dd');
     const co = format(addDays(sorted[sorted.length - 1], 1), 'yyyy-MM-dd');
-    navigate(`${ROUTES.DASHBOARD_BOOKINGS_NEW}?checkIn=${ci}&checkOut=${co}&propertyId=${id}`);
-  }, [selectedDays, id, navigate]);
+
+    // Build day prices from calendar overrides (date:price pairs)
+    const dayPrices = sorted.map(d => {
+      const dateStr = format(d, 'yyyy-MM-dd');
+      const override = dayDataMap.get(dateStr)?.priceOverride;
+      const price = override ?? property.pricePerNight;
+      return `${dateStr}:${price}`;
+    }).join(',');
+
+    navigate(`${ROUTES.DASHBOARD_BOOKINGS_NEW}?checkIn=${ci}&checkOut=${co}&propertyId=${id}&dayPrices=${encodeURIComponent(dayPrices)}`);
+  }, [selectedDays, id, navigate, dayDataMap, property]);
 
   if (loadingProp) return <div className="flex justify-center py-16"><Spinner size="lg" /></div>;
   if (!property) return <div className="text-center py-16 text-neutral-500">Propriedade não encontrada</div>;
