@@ -211,7 +211,7 @@ export function NewBookingPage() {
 
   const propertyOptions = useMemo(
     () => (properties || [])
-      .filter(p => p.status === 'active')
+      .filter(p => p.status === 'active' || p.status === 'pending')
       .map(p => ({ value: p.id, label: `${p.name} — ${p.address.city}` })),
     [properties],
   );
