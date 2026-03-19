@@ -66,11 +66,13 @@ export function PropertyFormPage() {
     resolver: zodResolver(schema) as Resolver<FormData>,
     defaultValues: {
       type: 'hotel',
-      amenities: [],
+      amenities: ['wifi', 'ac'],
       images: [],
       maxGuests: 2,
       bedrooms: 1,
       bathrooms: 1,
+      checkInTime: '12:00',
+      checkOutTime: '14:00',
     },
   });
 
