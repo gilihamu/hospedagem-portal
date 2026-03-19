@@ -42,7 +42,7 @@ const bookingSchema = z.object({
   propertyId: z.string().min(1, 'Selecione uma propriedade'),
   guestName: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres'),
   guestEmail: z.string().email('E-mail inválido').or(z.literal('')).optional(),
-  guestPhone: z.string().min(10, 'Telefone inválido'),
+  guestPhone: z.string().optional(),
   checkIn: z.string().min(1, 'Data de check-in obrigatória'),
   checkOut: z.string().min(1, 'Data de check-out obrigatória'),
   guests: z.coerce.number().min(1, 'Mínimo 1 hóspede').max(50),
@@ -259,7 +259,7 @@ export function NewBookingPage() {
         guestId: selectedGuest?.id || user?.id || '',
         guestName: data.guestName,
         guestEmail: data.guestEmail || '',
-        guestPhone: data.guestPhone,
+        guestPhone: data.guestPhone || '',
         checkIn: new Date(data.checkIn).toISOString(),
         checkOut: new Date(data.checkOut).toISOString(),
         guests: data.guests,
@@ -391,19 +391,30 @@ export function NewBookingPage() {
 
           {/* Selected guest badge */}
           {selectedGuest ? (
-            <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                  <UserIcon className="w-5 h-5 text-green-700" />
+            <div className="space-y-3 mb-4">
+              <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                    <UserIcon className="w-5 h-5 text-green-700" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm text-green-900">{selectedGuest.name}</p>
+                    <p className="text-xs text-green-600">{selectedGuest.email}{selectedGuest.phone ? ` · ${selectedGuest.phone}` : ''}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-medium text-sm text-green-900">{selectedGuest.name}</p>
-                  <p className="text-xs text-green-600">{selectedGuest.email}{selectedGuest.phone ? ` · ${selectedGuest.phone}` : ''}</p>
-                </div>
+                <button type="button" onClick={handleClearGuest} className="p-1 rounded hover:bg-green-100 text-green-600">
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-              <button type="button" onClick={handleClearGuest} className="p-1 rounded hover:bg-green-100 text-green-600">
-                <X className="w-4 h-4" />
-              </button>
+              {/* Show phone field if guest has no phone */}
+              {!selectedGuest.phone && (
+                <Input
+                  label="Telefone do hóspede"
+                  placeholder="+55 (48) 99999-0000"
+                  error={errors.guestPhone?.message}
+                  {...register('guestPhone')}
+                />
+              )}
             </div>
           ) : (
             <>
