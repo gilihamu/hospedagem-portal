@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   format, startOfMonth, endOfMonth, startOfWeek, endOfWeek,
-  addMonths, subMonths, eachDayOfInterval, isSameMonth,
+  addMonths, subMonths, addDays, eachDayOfInterval, isSameMonth,
   isToday, isBefore, isSameDay,
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -211,7 +211,7 @@ export function PropertyCalendarPage() {
     if (selectedDays.length === 0) return;
     const sorted = [...selectedDays].sort((a, b) => a.getTime() - b.getTime());
     const ci = format(sorted[0], 'yyyy-MM-dd');
-    const co = format(sorted[sorted.length - 1], 'yyyy-MM-dd');
+    const co = format(addDays(sorted[sorted.length - 1], 1), 'yyyy-MM-dd');
     navigate(`${ROUTES.DASHBOARD_BOOKINGS_NEW}?checkIn=${ci}&checkOut=${co}&propertyId=${id}`);
   }, [selectedDays, id, navigate]);
 
