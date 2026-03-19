@@ -46,6 +46,9 @@ function mapApiUser(apiUser: {
   const roleMap: Record<string, UserRole> = {
     'SuperAdmin': 'admin',
     'Admin': 'admin',
+    'TenantOwner': 'host',
+    'TenantAdmin': 'host',
+    'TenantUser': 'host',
     'Host': 'host',
     'PropertyManager': 'host',
     'Guest': 'guest',
@@ -170,6 +173,7 @@ export const authService = {
           email: data.email,
           password: data.password,
           phoneNumber: data.phone,
+          role: data.role,
         });
         const user = mapApiUser(response.user);
         setItem(STORAGE_KEY, {
