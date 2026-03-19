@@ -8,7 +8,7 @@ import {
 import { ptBR } from 'date-fns/locale';
 import {
   ChevronLeft, ChevronRight, ArrowLeft, DollarSign, Ban, CalendarPlus,
-  StickyNote, Clock, Eraser, Loader2, Check,
+  StickyNote, Clock, Eraser, Loader2, Check, LogIn, LogOut,
 } from 'lucide-react';
 import { useProperty } from '../../../hooks/useProperties';
 import { Button } from '../../../components/ui/Button';
@@ -113,6 +113,17 @@ export function PropertyCalendarPage() {
       }
     });
     return map;
+  }, [propertyBookings]);
+
+  // Check-in / Check-out markers
+  const { checkInDates, checkOutDates } = useMemo(() => {
+    const ciMap = new Map<string, PropertyBooking>();
+    const coMap = new Map<string, PropertyBooking>();
+    propertyBookings.forEach(b => {
+      ciMap.set(b.checkIn, b);
+      coMap.set(b.checkOut, b);
+    });
+    return { checkInDates: ciMap, checkOutDates: coMap };
   }, [propertyBookings]);
 
   // Selection
@@ -321,6 +332,8 @@ export function PropertyCalendarPage() {
                   const hasNote = !!data?.note;
                   const hasMinStay = data?.minStay != null;
                   const hasBooking = !!booking;
+                  const checkInBooking = checkInDates.get(dateStr);
+                  const checkOutBooking = checkOutDates.get(dateStr);
 
                   return (
                     <div
@@ -358,6 +371,24 @@ export function PropertyCalendarPage() {
                           {hasMinStay && <span className="w-1.5 h-1.5 rounded-full bg-violet-400" title={`Min. ${data!.minStay} noites`} />}
                         </div>
                       </div>
+
+                      {/* Check-in / Check-out badges */}
+                      {inMonth && (checkInBooking || checkOutBooking) && (
+                        <div className="flex flex-col gap-0.5 mt-0.5">
+                          {checkInBooking && (
+                            <span className="inline-flex items-center gap-0.5 text-[8px] font-bold text-emerald-700 bg-emerald-100 rounded px-1 py-px leading-none w-fit" title={`Check-in: ${checkInBooking.guestName}`}>
+                              <LogIn className="w-2.5 h-2.5" />
+                              IN
+                            </span>
+                          )}
+                          {checkOutBooking && (
+                            <span className="inline-flex items-center gap-0.5 text-[8px] font-bold text-orange-700 bg-orange-100 rounded px-1 py-px leading-none w-fit" title={`Check-out: ${checkOutBooking.guestName}`}>
+                              <LogOut className="w-2.5 h-2.5" />
+                              OUT
+                            </span>
+                          )}
+                        </div>
+                      )}
 
                       {/* Price */}
                       {inMonth && (
@@ -405,6 +436,8 @@ export function PropertyCalendarPage() {
           <div className="flex items-center gap-4 flex-wrap px-1 text-xs text-neutral-500">
             <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-sky-100 border border-sky-200 inline-block" /> Reservado</span>
             <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-rose-100 border border-rose-200 inline-block" /> Bloqueado</span>
+            <span className="flex items-center gap-1.5"><span className="inline-flex items-center text-[8px] font-bold text-emerald-700 bg-emerald-100 rounded px-1"><LogIn className="w-2.5 h-2.5 mr-0.5" />IN</span> Check-in</span>
+            <span className="flex items-center gap-1.5"><span className="inline-flex items-center text-[8px] font-bold text-orange-700 bg-orange-100 rounded px-1"><LogOut className="w-2.5 h-2.5 mr-0.5" />OUT</span> Check-out</span>
             <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> Preço especial</span>
             <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" /> Nota</span>
             <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-violet-400 inline-block" /> Estadia mínima</span>
