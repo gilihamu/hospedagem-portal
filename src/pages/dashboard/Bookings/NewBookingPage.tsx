@@ -109,6 +109,7 @@ export function NewBookingPage() {
   // Pre-fill from calendar selection
   const urlCheckIn = searchParams.get('checkIn') || '';
   const urlCheckOut = searchParams.get('checkOut') || '';
+  const urlPropertyId = searchParams.get('propertyId') || '';
 
   const [confirmed, setConfirmed] = useState<Booking | null>(null);
   const [selectedGuest, setSelectedGuest] = useState<SelectedGuest | null>(null);
@@ -122,7 +123,7 @@ export function NewBookingPage() {
   const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<BookingFormData>({
     resolver: zodResolver(bookingSchema) as Resolver<BookingFormData>,
     defaultValues: {
-      propertyId: '',
+      propertyId: urlPropertyId,
       guests: 1,
       guestName: '',
       guestEmail: '',

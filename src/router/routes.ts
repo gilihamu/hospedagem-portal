@@ -13,6 +13,7 @@ export const ROUTES = {
   DASHBOARD_PROPERTIES: '/dashboard/properties',
   DASHBOARD_PROPERTY_NEW: '/dashboard/properties/new',
   DASHBOARD_PROPERTY_EDIT: '/dashboard/properties/:id/edit',
+  DASHBOARD_PROPERTY_CALENDAR: '/dashboard/properties/:id/calendar',
   DASHBOARD_BRANCHES: '/dashboard/branches',
   DASHBOARD_BRANCHES_NEW: '/dashboard/branches/new',
   DASHBOARD_BOOKINGS: '/dashboard/bookings',
@@ -50,6 +51,10 @@ export function bookingRoute(propertyId: string) {
 
 export function editPropertyRoute(id: string) {
   return `/dashboard/properties/${id}/edit`;
+}
+
+export function propertyCalendarRoute(id: string) {
+  return `/dashboard/properties/${id}/calendar`;
 }
 
 export function portfolioRoute(slug: string) {

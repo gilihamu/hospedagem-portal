@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Building2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Building2, CalendarDays } from 'lucide-react';
 import { useAuthStore } from '../../../store/auth.store';
 import { useOwnerProperties, useUpdateProperty, useDeleteProperty } from '../../../hooks/useProperties';
 import { Button } from '../../../components/ui/Button';
@@ -11,7 +11,7 @@ import { ConfirmDialog } from '../../../components/shared/ConfirmDialog';
 import { Spinner } from '../../../components/ui/Spinner';
 import { useToast } from '../../../hooks/useToast';
 import { formatCurrency } from '../../../utils/formatters';
-import { ROUTES, editPropertyRoute } from '../../../router/routes';
+import { ROUTES, editPropertyRoute, propertyCalendarRoute } from '../../../router/routes';
 import type { Property } from '../../../types';
 
 const typeLabels: Record<string, string> = {
@@ -128,6 +128,11 @@ export function PropertiesPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-1">
+                          <Link to={propertyCalendarRoute(prop.id)}>
+                            <button className="p-1.5 rounded-lg text-neutral-400 hover:text-primary hover:bg-primary/5 transition-colors" title="Calendário">
+                              <CalendarDays className="w-4 h-4" />
+                            </button>
+                          </Link>
                           <Link to={editPropertyRoute(prop.id)}>
                             <button className="p-1.5 rounded-lg text-neutral-400 hover:text-primary hover:bg-primary/5 transition-colors">
                               <Pencil className="w-4 h-4" />

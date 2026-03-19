@@ -41,6 +41,7 @@ const ResetPassword = lazy(() => import('../pages/auth/ResetPassword').then(m =>
 const DashboardOverview = lazy(() => import('../pages/dashboard/Overview').then(m => ({ default: m.OverviewPage })));
 const DashboardProperties = lazy(() => import('../pages/dashboard/Properties').then(m => ({ default: m.PropertiesPage })));
 const DashboardPropertyForm = lazy(() => import('../pages/dashboard/PropertyForm').then(m => ({ default: m.PropertyFormPage })));
+const DashboardPropertyCalendar = lazy(() => import('../pages/dashboard/PropertyCalendar').then(m => ({ default: m.PropertyCalendarPage })));
 const DashboardBranches = lazy(() => import('../pages/dashboard/Branches').then(m => ({ default: m.BranchesPage })));
 const DashboardBranchForm = lazy(() => import('../pages/dashboard/BranchForm').then(m => ({ default: m.BranchFormPage })));
 const DashboardBookings = lazy(() => import('../pages/dashboard/Bookings').then(m => ({ default: m.BookingsPage })));
@@ -180,6 +181,7 @@ export const router = createBrowserRouter([
               { path: ROUTES.DASHBOARD_PROPERTIES, element: withSuspense(DashboardProperties) },
               { path: ROUTES.DASHBOARD_PROPERTY_NEW, element: withSuspense(DashboardPropertyForm) },
               { path: ROUTES.DASHBOARD_PROPERTY_EDIT, element: withSuspense(DashboardPropertyForm) },
+              { path: ROUTES.DASHBOARD_PROPERTY_CALENDAR, element: withSuspense(DashboardPropertyCalendar) },
               { path: ROUTES.DASHBOARD_BRANCHES, element: withSuspense(DashboardBranches) },
               { path: ROUTES.DASHBOARD_BRANCHES_NEW, element: withSuspense(DashboardBranchForm) },
               { path: ROUTES.DASHBOARD_BOOKINGS, element: withSuspense(DashboardBookings) },
