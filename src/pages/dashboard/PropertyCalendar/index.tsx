@@ -11,8 +11,6 @@ import {
   StickyNote, Clock, Eraser, Loader2, Check,
 } from 'lucide-react';
 import { useProperty } from '../../../hooks/useProperties';
-import { useHostBookings } from '../../../hooks/useBookings';
-import { useAuthStore } from '../../../store/auth.store';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { Textarea } from '../../../components/ui/Textarea';
@@ -23,9 +21,8 @@ import { formatCurrency } from '../../../utils/formatters';
 import { cn } from '../../../utils/cn';
 import { api } from '../../../lib/api';
 import { ROUTES } from '../../../router/routes';
-import type { Booking } from '../../../types';
 
-// ── Types ────────────────────────────────────────────────────────────────
+// ── Types ──
 interface CalendarDayData {
   date: string;
   priceOverride: number | null;
@@ -33,6 +30,15 @@ interface CalendarDayData {
   blockReason: string | null;
   minStay: number | null;
   note: string | null;
+}
+
+interface PropertyBooking {
+  id: string;
+  guestName: string;
+  checkIn: string;
+  checkOut: string;
+  status: string;
+  confirmationCode: string;
 }
 
 type ActionMode = 'price' | 'block' | 'reserve' | 'minstay' | 'note' | null;
@@ -54,13 +60,12 @@ function buildWeeks(month: Date): Date[][] {
 export function PropertyCalendarPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuthStore();
   const { data: property, isLoading: loadingProp } = useProperty(id || '');
-  const { data: bookings } = useHostBookings(user?.id);
   const { success, error: showError } = useToast();
 
   const [month, setMonth] = useState(new Date());
   const [calendarData, setCalendarData] = useState<CalendarDayData[]>([]);
+  const [propertyBookings, setPropertyBookings] = useState<PropertyBooking[]>([]);
   const [loadingCal, setLoadingCal] = useState(false);
   const [selectedDays, setSelectedDays] = useState<Date[]>([]);
   const [actionMode, setActionMode] = useState<ActionMode>(null);
@@ -72,23 +77,21 @@ export function PropertyCalendarPage() {
   const [minStayValue, setMinStayValue] = useState('');
   const [noteValue, setNoteValue] = useState('');
 
-  // Load calendar data
+  // Load calendar data + bookings for this property
   useEffect(() => {
     if (!id) return;
     const from = format(startOfMonth(month), 'yyyy-MM-dd');
     const to = format(endOfMonth(month), 'yyyy-MM-dd');
     setLoadingCal(true);
-    api.get<CalendarDayData[]>(`/properties/${id}/calendar?from=${from}&to=${to}`)
-      .then(setCalendarData)
-      .catch(() => setCalendarData([]))
-      .finally(() => setLoadingCal(false));
-  }, [id, month]);
 
-  // Property bookings for this property
-  const propertyBookings = useMemo(
-    () => (bookings || []).filter(b => b.propertyId === id && b.status !== 'cancelled'),
-    [bookings, id],
-  );
+    Promise.all([
+      api.get<CalendarDayData[]>(`/properties/${id}/calendar?from=${from}&to=${to}`).catch(() => []),
+      api.get<PropertyBooking[]>(`/bookings/calendar/${id}?from=${from}&to=${to}`).catch(() => []),
+    ]).then(([cal, bkgs]) => {
+      setCalendarData(cal);
+      setPropertyBookings(bkgs);
+    }).finally(() => setLoadingCal(false));
+  }, [id, month]);
 
   const weeks = useMemo(() => buildWeeks(month), [month]);
 
@@ -101,7 +104,7 @@ export function PropertyCalendarPage() {
 
   // Booking lookup by day
   const bookingsByDay = useMemo(() => {
-    const map = new Map<string, Booking>();
+    const map = new Map<string, PropertyBooking>();
     propertyBookings.forEach(b => {
       const ci = new Date(b.checkIn);
       const co = new Date(b.checkOut);
