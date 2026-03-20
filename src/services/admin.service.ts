@@ -170,4 +170,50 @@ export const adminService = {
       ],
     };
   },
+
+  // ── Email Settings ──────────────────────────────────────────────────────────
+
+  async getEmailSettings(): Promise<EmailSettingsDto | null> {
+    if (USE_API) {
+      try {
+        return await api.get<EmailSettingsDto>('/admin/email-settings');
+      } catch { return null; }
+    }
+    return null;
+  },
+
+  async saveEmailSettings(data: SaveEmailSettingsRequest): Promise<EmailSettingsDto> {
+    return api.put<EmailSettingsDto>('/admin/email-settings', data);
+  },
+
+  async sendTestEmail(recipientEmail: string): Promise<void> {
+    await api.post('/admin/email-settings/test', { recipientEmail });
+  },
 };
+
+// ── Email Settings types ──────────────────────────────────────────────────
+export interface EmailSettingsDto {
+  id: string;
+  smtpHost: string;
+  smtpPort: number;
+  smtpUsername: string;
+  fromEmail: string;
+  fromName: string;
+  useSsl: boolean;
+  useStartTls: boolean;
+  isEnabled: boolean;
+  createdAt: string;
+  updatedAt: string | null;
+}
+
+export interface SaveEmailSettingsRequest {
+  smtpHost: string;
+  smtpPort: number;
+  smtpUsername: string;
+  smtpPassword: string;
+  fromEmail: string;
+  fromName: string;
+  useSsl: boolean;
+  useStartTls: boolean;
+  isEnabled: boolean;
+}

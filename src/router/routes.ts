@@ -31,6 +31,7 @@ export const ROUTES = {
   ADMIN_TENANTS: '/admin/tenants',
   ADMIN_AUDIT_LOGS: '/admin/audit-logs',
   ADMIN_METRICS: '/admin/metrics',
+  ADMIN_EMAIL_SETTINGS: '/admin/email-settings',
   VERIFY_EMAIL: '/verify-email',
   DASHBOARD_GUEST_GUIDE: '/dashboard/guest-guide',
   MESSAGES: '/messages',

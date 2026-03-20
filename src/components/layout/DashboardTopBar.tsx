@@ -28,6 +28,7 @@ const routeLabels: Record<string, string> = {
   '/admin/tenants': 'Tenants',
   '/admin/audit-logs': 'Logs de Auditoria',
   '/admin/metrics': 'Métricas do Sistema',
+  '/admin/email-settings': 'Configurações de E-mail',
   '/messages': 'Mensagens',
 };
 

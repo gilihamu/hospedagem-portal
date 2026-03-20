@@ -61,6 +61,7 @@ const AdminChannels = lazy(() => import('../pages/admin/Channels').then(m => ({ 
 const AdminTenants = lazy(() => import('../pages/admin/Tenants').then(m => ({ default: m.AdminTenantsPage })));
 const AdminAuditLogs = lazy(() => import('../pages/admin/AuditLogs').then(m => ({ default: m.AdminAuditLogsPage })));
 const AdminMetrics = lazy(() => import('../pages/admin/Metrics').then(m => ({ default: m.AdminMetricsPage })));
+const AdminEmailSettings = lazy(() => import('../pages/admin/EmailSettings').then(m => ({ default: m.AdminEmailSettingsPage })));
 
 // Verify Email
 const VerifyEmail = lazy(() => import('../pages/auth/VerifyEmail').then(m => ({ default: m.VerifyEmailPage })));
@@ -218,6 +219,7 @@ export const router = createBrowserRouter([
               { path: ROUTES.ADMIN_TENANTS, element: withSuspense(AdminTenants) },
               { path: ROUTES.ADMIN_AUDIT_LOGS, element: withSuspense(AdminAuditLogs) },
               { path: ROUTES.ADMIN_METRICS, element: withSuspense(AdminMetrics) },
+              { path: ROUTES.ADMIN_EMAIL_SETTINGS, element: withSuspense(AdminEmailSettings) },
             ],
           },
         ],

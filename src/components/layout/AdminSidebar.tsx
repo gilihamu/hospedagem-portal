@@ -13,6 +13,7 @@ import {
   Landmark,
   ScrollText,
   Activity,
+  Mail,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/auth.store';
 import { useUIStore } from '../../store/ui.store';
@@ -32,6 +33,7 @@ const navItems = [
   { label: 'Tenants', icon: Landmark, href: ROUTES.ADMIN_TENANTS },
   { label: 'Audit Logs', icon: ScrollText, href: ROUTES.ADMIN_AUDIT_LOGS },
   { label: 'Métricas', icon: Activity, href: ROUTES.ADMIN_METRICS },
+  { label: 'E-mail (SMTP)', icon: Mail, href: ROUTES.ADMIN_EMAIL_SETTINGS },
 ];
 
 export function AdminSidebar() {
