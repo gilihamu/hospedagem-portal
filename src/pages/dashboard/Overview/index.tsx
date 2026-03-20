@@ -4,8 +4,10 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { useAuthStore } from '../../../store/auth.store';
 import { useAnalyticsSummary, useRevenueData } from '../../../hooks/useAnalytics';
 import { useHostBookings } from '../../../hooks/useBookings';
+import { useOwnerProperties } from '../../../hooks/useProperties';
 import { StatCard } from '../../../components/shared/StatCard';
 import { BookingStatusBadge } from '../../../components/shared/BookingStatusBadge';
+import { PropertyCalendarCard } from '../../../components/dashboard/PropertyCalendarCard';
 import { Button } from '../../../components/ui/Button';
 import { Spinner } from '../../../components/ui/Spinner';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
@@ -19,6 +21,7 @@ export function OverviewPage() {
   const { data: summary, isLoading: summaryLoading } = useAnalyticsSummary(hostId);
   const { data: revenueData, isLoading: revenueLoading } = useRevenueData(hostId, 6);
   const { data: bookings } = useHostBookings(user?.id);
+  const { data: properties } = useOwnerProperties(user?.id);
 
   const today = format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR });
   const recentBookings = bookings?.slice(0, 5) || [];
@@ -127,6 +130,24 @@ export function OverviewPage() {
           </div>
         </div>
       </div>
+
+      {/* Property Calendars */}
+      {properties && properties.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold text-neutral-800 flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-primary" />
+              Calendários das Propriedades
+            </h2>
+            <Link to={ROUTES.DASHBOARD_PROPERTIES} className="text-xs text-primary hover:underline">Ver todas</Link>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+            {properties.map((p) => (
+              <PropertyCalendarCard key={p.id} propertyId={p.id} propertyName={p.name} />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
