@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Phone, UserPlus, CalendarPlus, ArrowLeft, CheckCircle, Search, X, User as UserIcon } from 'lucide-react';
+import { Phone, UserPlus, CalendarPlus, ArrowLeft, CheckCircle, Search, X, User as UserIcon, AlertTriangle, Loader2 } from 'lucide-react';
 import { Input } from '../../../components/ui/Input';
 import { Textarea } from '../../../components/ui/Textarea';
 import { Select } from '../../../components/ui/Select';
@@ -35,6 +35,15 @@ interface SelectedGuest {
   name: string;
   email: string;
   phone: string;
+}
+
+interface PropertyCalendarBooking {
+  id: string;
+  guestName: string;
+  checkIn: string;
+  checkOut: string;
+  status: string;
+  confirmationCode: string;
 }
 
 // ─── Schemas ────────────────────────────────────────────────
@@ -126,6 +135,8 @@ export function NewBookingPage() {
   const [confirmed, setConfirmed] = useState<Booking | null>(null);
   const [selectedGuest, setSelectedGuest] = useState<SelectedGuest | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [availabilityStatus, setAvailabilityStatus] = useState<'idle' | 'loading' | 'available' | 'unavailable'>('idle');
+  const [availabilityMessage, setAvailabilityMessage] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [showNewGuestModal, setShowNewGuestModal] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
@@ -211,6 +222,60 @@ export function NewBookingPage() {
     () => (watchCustomPrice && watchCustomPrice > 0) ? watchCustomPrice : selectedProperty?.pricePerNight ?? 0,
     [watchCustomPrice, selectedProperty],
   );
+
+  // ─── Availability check ──────────────────────────────────
+  useEffect(() => {
+    if (!watchPropertyId || !watchCheckIn || !watchCheckOut) {
+      setAvailabilityStatus('idle');
+      setAvailabilityMessage('');
+      return;
+    }
+
+    const checkInDate = new Date(watchCheckIn);
+    const checkOutDate = new Date(watchCheckOut);
+    if (checkOutDate <= checkInDate) {
+      setAvailabilityStatus('idle');
+      setAvailabilityMessage('');
+      return;
+    }
+
+    let cancelled = false;
+    setAvailabilityStatus('loading');
+    setAvailabilityMessage('');
+
+    Promise.all([
+      api.get<{ blockedDates: string[] }>(`/properties/${watchPropertyId}/availability?from=${watchCheckIn}&to=${watchCheckOut}`).catch(() => ({ blockedDates: [] })),
+      api.get<PropertyCalendarBooking[]>(`/bookings/calendar/${watchPropertyId}?from=${watchCheckIn}&to=${watchCheckOut}`).catch(() => []),
+    ]).then(([availability, bookings]) => {
+      if (cancelled) return;
+
+      const blocked = availability.blockedDates?.filter(d => d >= watchCheckIn && d < watchCheckOut) || [];
+      const overlapping = (bookings || []).filter(b =>
+        b.status !== 'cancelled' && b.checkIn < watchCheckOut && b.checkOut > watchCheckIn
+      );
+
+      if (blocked.length > 0 && overlapping.length > 0) {
+        setAvailabilityStatus('unavailable');
+        setAvailabilityMessage(`Existem ${blocked.length} data(s) bloqueada(s) e ${overlapping.length} reserva(s) existente(s) neste período.`);
+      } else if (blocked.length > 0) {
+        setAvailabilityStatus('unavailable');
+        setAvailabilityMessage(`Existem ${blocked.length} data(s) bloqueada(s) neste período.`);
+      } else if (overlapping.length > 0) {
+        setAvailabilityStatus('unavailable');
+        setAvailabilityMessage(`Já existe(m) ${overlapping.length} reserva(s) neste período.`);
+      } else {
+        setAvailabilityStatus('available');
+        setAvailabilityMessage('Datas disponíveis!');
+      }
+    }).catch(() => {
+      if (!cancelled) {
+        setAvailabilityStatus('idle');
+        setAvailabilityMessage('');
+      }
+    });
+
+    return () => { cancelled = true; };
+  }, [watchPropertyId, watchCheckIn, watchCheckOut]);
 
   const nights = useMemo(() => {
     if (watchCheckIn && watchCheckOut) {
@@ -363,6 +428,20 @@ export function NewBookingPage() {
                 {...register('guests')}
               />
             </div>
+            {/* Availability feedback */}
+            {watchCheckIn && watchCheckOut && watchPropertyId && (
+              <div className={`flex items-center gap-2 p-3 rounded-lg text-sm ${
+                availabilityStatus === 'loading' ? 'bg-neutral-50 text-neutral-500' :
+                availabilityStatus === 'available' ? 'bg-green-50 border border-green-200 text-green-700' :
+                availabilityStatus === 'unavailable' ? 'bg-red-50 border border-red-200 text-red-700' :
+                'hidden'
+              }`}>
+                {availabilityStatus === 'loading' && <Loader2 className="w-4 h-4 animate-spin" />}
+                {availabilityStatus === 'available' && <CheckCircle className="w-4 h-4 text-green-600" />}
+                {availabilityStatus === 'unavailable' && <AlertTriangle className="w-4 h-4 text-red-600" />}
+                <span>{availabilityStatus === 'loading' ? 'Verificando disponibilidade...' : availabilityMessage}</span>
+              </div>
+            )}
             {selectedProperty && (
               <div className="mt-2">
                 <Input
@@ -572,7 +651,7 @@ export function NewBookingPage() {
           <Button variant="ghost" type="button" onClick={() => navigate(ROUTES.DASHBOARD_BOOKINGS)}>
             Cancelar
           </Button>
-          <Button type="submit" loading={isSubmitting || createBooking.isPending} disabled={!watchPropertyId}>
+          <Button type="submit" loading={isSubmitting || createBooking.isPending} disabled={!watchPropertyId || availabilityStatus === 'unavailable' || availabilityStatus === 'loading'}>
             Criar Reserva
           </Button>
         </div>
