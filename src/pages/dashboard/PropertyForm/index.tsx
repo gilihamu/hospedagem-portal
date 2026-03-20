@@ -1,8 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useForm, Controller, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { Plus, Trash2 } from 'lucide-react';
 import { Input } from '../../../components/ui/Input';
 import { Textarea } from '../../../components/ui/Textarea';
 import { Select } from '../../../components/ui/Select';
@@ -37,6 +38,7 @@ const schema = z.object({
   amenities: z.array(z.string()),
   images: z.array(z.string()),
   status: z.enum(['active', 'inactive', 'pending']).optional(),
+  isSharedRoom: z.boolean().optional(),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -62,6 +64,10 @@ export function PropertyFormPage() {
   const createProperty = useCreateProperty();
   const updateProperty = useUpdateProperty();
 
+  // Dormitory state (managed outside react-hook-form for dynamic list)
+  interface DormitoryEntry { name: string; totalBeds: number; pricePerBed: number; description: string; }
+  const [dormitories, setDormitories] = useState<DormitoryEntry[]>([]);
+
   const { register, handleSubmit, control, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
     defaultValues: {
@@ -73,8 +79,11 @@ export function PropertyFormPage() {
       bathrooms: 1,
       checkInTime: '12:00',
       checkOutTime: '14:00',
+      isSharedRoom: false,
     },
   });
+
+  const watchIsSharedRoom = watch('isSharedRoom');
 
   useEffect(() => {
     if (existing && isEditing) {
@@ -97,7 +106,16 @@ export function PropertyFormPage() {
         checkOutTime: existing.checkOutTime,
         amenities: existing.amenities,
         images: existing.images.map((i) => i.url),
+        isSharedRoom: existing.isSharedRoom ?? false,
       });
+      if (existing.dormitories?.length) {
+        setDormitories(existing.dormitories.map(d => ({
+          name: d.name,
+          totalBeds: d.totalBeds,
+          pricePerBed: d.pricePerBed,
+          description: d.description ?? '',
+        })));
+      }
     }
   }, [existing, isEditing, reset]);
 
@@ -140,6 +158,8 @@ export function PropertyFormPage() {
         ownerName: user?.name || '',
         ownerAvatar: user?.avatar,
         status: 'active' as PropertyStatus,
+        isSharedRoom: data.isSharedRoom ?? false,
+        dormitories: data.isSharedRoom ? dormitories.filter(d => d.name && d.totalBeds > 0) : [],
       };
 
       if (isEditing && id) {
@@ -218,6 +238,92 @@ export function PropertyFormPage() {
             <Input label="Check-in" type="time" {...register('checkInTime')} />
             <Input label="Check-out" type="time" {...register('checkOutTime')} />
           </div>
+        </div>
+
+        {/* Shared Room / Dormitories */}
+        <div className="card-base p-5">
+          <h2 className="font-semibold text-neutral-800 mb-4">Quarto Compartilhado</h2>
+          <Checkbox
+            label="Esta acomodação é um quarto compartilhado (dormitório)"
+            checked={!!watchIsSharedRoom}
+            onChange={() => setValue('isSharedRoom', !watchIsSharedRoom)}
+          />
+          <p className="text-xs text-neutral-400 mt-1">Quartos compartilhados permitem reservar camas individuais. Múltiplos hóspedes podem compartilhar o mesmo quarto.</p>
+
+          {watchIsSharedRoom && (
+            <div className="mt-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-neutral-700">Dormitórios</h3>
+                <button
+                  type="button"
+                  onClick={() => setDormitories(prev => [...prev, { name: '', totalBeds: 1, pricePerBed: 0, description: '' }])}
+                  className="flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Adicionar dormitório
+                </button>
+              </div>
+
+              {dormitories.length === 0 && (
+                <p className="text-xs text-neutral-400 italic">Nenhum dormitório adicionado. Clique em "Adicionar dormitório" acima.</p>
+              )}
+
+              {dormitories.map((dorm, idx) => (
+                <div key={idx} className="border border-surface-border rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-neutral-700">Dormitório {idx + 1}</span>
+                    <button
+                      type="button"
+                      onClick={() => setDormitories(prev => prev.filter((_, i) => i !== idx))}
+                      className="text-rose-500 hover:text-rose-700"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <Input
+                      label="Nome *"
+                      placeholder="Ex: Dormitório Feminino"
+                      value={dorm.name}
+                      onChange={e => {
+                        const val = e.target.value;
+                        setDormitories(prev => prev.map((d, i) => i === idx ? { ...d, name: val } : d));
+                      }}
+                    />
+                    <Input
+                      label="Total de camas *"
+                      type="number"
+                      min={1}
+                      value={dorm.totalBeds}
+                      onChange={e => {
+                        const val = Number(e.target.value);
+                        setDormitories(prev => prev.map((d, i) => i === idx ? { ...d, totalBeds: val } : d));
+                      }}
+                    />
+                    <Input
+                      label="Preço/cama (R$) *"
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={dorm.pricePerBed}
+                      onChange={e => {
+                        const val = Number(e.target.value);
+                        setDormitories(prev => prev.map((d, i) => i === idx ? { ...d, pricePerBed: val } : d));
+                      }}
+                    />
+                  </div>
+                  <Input
+                    label="Descrição"
+                    placeholder="Opcional: detalhes do dormitório"
+                    value={dorm.description}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setDormitories(prev => prev.map((d, i) => i === idx ? { ...d, description: val } : d));
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Amenities */}

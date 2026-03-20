@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Phone, UserPlus, CalendarPlus, ArrowLeft, CheckCircle, Search, X, User as UserIcon, AlertTriangle, Loader2 } from 'lucide-react';
+import { Phone, UserPlus, CalendarPlus, ArrowLeft, CheckCircle, Search, X, User as UserIcon, AlertTriangle, Loader2, BedDouble } from 'lucide-react';
 import { Input } from '../../../components/ui/Input';
 import { Textarea } from '../../../components/ui/Textarea';
 import { Select } from '../../../components/ui/Select';
@@ -137,6 +137,8 @@ export function NewBookingPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [availabilityStatus, setAvailabilityStatus] = useState<'idle' | 'loading' | 'available' | 'unavailable'>('idle');
   const [availabilityMessage, setAvailabilityMessage] = useState('');
+  const [selectedDormitoryId, setSelectedDormitoryId] = useState('');
+  const [bedsBooked, setBedsBooked] = useState(1);
   const [showDropdown, setShowDropdown] = useState(false);
   const [showNewGuestModal, setShowNewGuestModal] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
@@ -330,6 +332,10 @@ export function NewBookingPage() {
         guests: data.guests,
         specialRequests: data.specialRequests,
         customPricePerNight: (data.customPricePerNight && data.customPricePerNight > 0) ? data.customPricePerNight : undefined,
+        ...(selectedProperty?.isSharedRoom && selectedDormitoryId ? {
+          dormitoryId: selectedDormitoryId,
+          bedsBooked,
+        } : {}),
       });
       setConfirmed(booking);
       success('Reserva criada com sucesso!');
@@ -440,6 +446,44 @@ export function NewBookingPage() {
                 {availabilityStatus === 'available' && <CheckCircle className="w-4 h-4 text-green-600" />}
                 {availabilityStatus === 'unavailable' && <AlertTriangle className="w-4 h-4 text-red-600" />}
                 <span>{availabilityStatus === 'loading' ? 'Verificando disponibilidade...' : availabilityMessage}</span>
+              </div>
+            )}
+
+            {/* Dormitory selection for shared rooms */}
+            {selectedProperty?.isSharedRoom && selectedProperty.dormitories && selectedProperty.dormitories.length > 0 && (
+              <div className="border border-violet-200 rounded-lg p-4 bg-violet-50/50 space-y-3">
+                <h3 className="text-sm font-semibold text-violet-800 flex items-center gap-2">
+                  <BedDouble className="w-4 h-4" />
+                  Quarto Compartilhado — Selecione o dormitório
+                </h3>
+                <Select
+                  label="Dormitório *"
+                  options={selectedProperty.dormitories.filter(d => d.isActive).map(d => ({
+                    value: d.id,
+                    label: `${d.name} — ${d.totalBeds} camas · ${formatCurrency(d.pricePerBed)}/cama`,
+                  }))}
+                  placeholder="Selecione um dormitório"
+                  value={selectedDormitoryId}
+                  onChange={e => setSelectedDormitoryId(e.target.value)}
+                />
+                {selectedDormitoryId && (() => {
+                  const dorm = selectedProperty.dormitories!.find(d => d.id === selectedDormitoryId);
+                  return dorm ? (
+                    <div className="space-y-2">
+                      <Input
+                        label={`Quantidade de camas (máx: ${dorm.totalBeds})`}
+                        type="number"
+                        min={1}
+                        max={dorm.totalBeds}
+                        value={bedsBooked}
+                        onChange={e => setBedsBooked(Math.min(Number(e.target.value), dorm.totalBeds))}
+                      />
+                      <p className="text-xs text-violet-600">
+                        Valor total: {formatCurrency(dorm.pricePerBed * bedsBooked)} por noite ({bedsBooked} cama{bedsBooked > 1 ? 's' : ''})
+                      </p>
+                    </div>
+                  ) : null;
+                })()}
               </div>
             )}
             {selectedProperty && (

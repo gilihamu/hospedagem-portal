@@ -31,6 +31,8 @@ export interface CreateBookingData {
   guests: number;
   specialRequests?: string;
   customPricePerNight?: number;
+  dormitoryId?: string;
+  bedsBooked?: number;
 }
 
 export interface PriceBreakdown {

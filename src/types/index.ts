@@ -45,6 +45,16 @@ export interface PropertyReview {
   createdAt: string;
 }
 
+export interface Dormitory {
+  id: string;
+  propertyId: string;
+  name: string;
+  totalBeds: number;
+  pricePerBed: number;
+  description?: string;
+  isActive: boolean;
+}
+
 export interface Property {
   id: string;
   ownerId: string;
@@ -69,6 +79,8 @@ export interface Property {
   checkOutTime?: string;
   channelSource?: ChannelSlug;
   channelExternalId?: string;
+  isSharedRoom?: boolean;
+  dormitories?: Dormitory[];
 }
 
 export interface Branch {
@@ -110,6 +122,8 @@ export interface Booking {
   confirmationCode: string;
   channelSource?: ChannelSlug;
   channelExternalId?: string;
+  dormitoryId?: string;
+  bedsBooked?: number;
 }
 
 export interface Message {
