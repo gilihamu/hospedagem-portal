@@ -159,7 +159,17 @@ export function PropertyFormPage() {
         ownerAvatar: user?.avatar,
         status: 'active' as PropertyStatus,
         isSharedRoom: data.isSharedRoom ?? false,
-        dormitories: data.isSharedRoom ? dormitories.filter(d => d.name && d.totalBeds > 0) : [],
+        dormitories: data.isSharedRoom
+          ? dormitories.filter(d => d.name && d.totalBeds > 0).map(d => ({
+              id: '',
+              propertyId: '',
+              name: d.name,
+              totalBeds: d.totalBeds,
+              pricePerBed: d.pricePerBed,
+              description: d.description || undefined,
+              isActive: true,
+            }))
+          : [],
       };
 
       if (isEditing && id) {
