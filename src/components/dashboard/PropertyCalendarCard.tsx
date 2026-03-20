@@ -3,13 +3,13 @@ import { Link } from 'react-router-dom';
 import {
   format, startOfMonth, endOfMonth, startOfWeek, endOfWeek,
   addMonths, subMonths, eachDayOfInterval, isSameMonth,
-  isToday, isSameDay,
+  isToday,
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Building2, ExternalLink } from 'lucide-react';
-import { cn } from '../../../utils/cn';
-import { propertyCalendarRoute } from '../../../router/routes';
-import { api } from '../../../lib/api';
+import { cn } from '../../utils/cn';
+import { propertyCalendarRoute } from '../../router/routes';
+import { api } from '../../lib/api';
 
 interface PropertyBooking {
   id: string;
