@@ -1,0 +1,14 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+  body { @apply bg-surface-muted text-neutral-900 font-sans antialiased; }
+}
+@layer components {
+  .container-app { @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8; }
+  .card-base { @apply bg-white rounded-xl shadow-card border border-surface-border; }
+  .input-base { @apply w-full rounded-lg border border-surface-border bg-white px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 transition-all focus:ring-2 focus:ring-primary/20 focus:border-primary; }
+}
