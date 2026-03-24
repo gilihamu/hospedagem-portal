@@ -4,7 +4,7 @@ import {
   ArrowLeft, Copy, Check, Phone, Mail, MessageCircle,
   Calendar, Clock, Users, CreditCard, Building2, User,
   MapPin, Star, Edit3, XCircle, CheckCircle, AlertTriangle,
-  History, PlusCircle, Printer,
+  Send, History, PlusCircle, Printer,
   MoreHorizontal, Ban, BedDouble, Hash,
   ExternalLink,
 } from 'lucide-react';
