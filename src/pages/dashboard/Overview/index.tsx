@@ -7,6 +7,7 @@ import { useHostBookings } from '../../../hooks/useBookings';
 import { useOwnerProperties } from '../../../hooks/useProperties';
 import { StatCard } from '../../../components/shared/StatCard';
 import { BookingStatusBadge } from '../../../components/shared/BookingStatusBadge';
+import { BookingGrid } from '../../../components/dashboard/BookingGrid';
 import { PropertyCalendarCard } from '../../../components/dashboard/PropertyCalendarCard';
 import { Button } from '../../../components/ui/Button';
 import { Spinner } from '../../../components/ui/Spinner';
@@ -81,6 +82,14 @@ export function OverviewPage() {
             iconColor="text-warning"
           />
         </div>
+      )}
+
+      {/* Booking Grid — Mapa de Reservas por Propriedade */}
+      {properties && properties.length > 0 && bookings && (
+        <BookingGrid
+          bookings={bookings}
+          properties={properties.map(p => ({ id: p.id, name: p.name }))}
+        />
       )}
 
       {/* Charts + Recent Bookings */}
