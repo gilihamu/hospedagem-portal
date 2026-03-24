@@ -2,10 +2,10 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
   DollarSign, TrendingUp, TrendingDown, Receipt,
-  ArrowDownUp, FileText, PieChart, Wallet,
+  ArrowDownUp, FileText, PieChart, Wallet, Building2,
 } from "lucide-react";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, PieChart as RPieChart, Pie, Cell,
 } from "recharts";
 import { useFinanceDashboard, useFinanceBalance } from "../../../hooks/useFinance";
@@ -14,6 +14,8 @@ import { Spinner } from "../../../components/ui/Spinner";
 import { Button } from "../../../components/ui/Button";
 import { formatCurrency } from "../../../utils/formatters";
 import { ROUTES } from "../../../router/routes";
+
+const PROPERTY_COLORS = ['#6366F1', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'];
 
 export function FinanceDashboardPage() {
   const now = new Date();
@@ -36,6 +38,15 @@ export function FinanceDashboardPage() {
     { icon: TrendingUp, label: "Lucro Líquido", value: formatCurrency(dashboard?.netProfit ?? 0), iconColor: "text-primary" },
     { icon: Wallet, label: "Saldo Atual", value: formatCurrency(balance?.balance ?? 0), iconColor: "text-info" },
   ];
+
+  const propertyChartData = (dashboard?.byProperty ?? []).map((p, i) => ({
+    name: p.propertyName.length > 18 ? p.propertyName.slice(0, 16) + '…' : p.propertyName,
+    fullName: p.propertyName,
+    revenue: p.revenue,
+    expenses: p.expenses,
+    profit: p.profit,
+    fill: PROPERTY_COLORS[i % PROPERTY_COLORS.length],
+  }));
 
   return (
     <div className="space-y-6">
@@ -114,6 +125,82 @@ export function FinanceDashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Property Comparison */}
+      {propertyChartData.length > 0 && (
+        <div className="card-base p-5">
+          <h2 className="text-lg font-semibold text-neutral-800 mb-4 flex items-center gap-2">
+            <Building2 className="w-5 h-5 text-primary" /> Comparativo por Propriedade
+          </h2>
+
+          {/* Stacked bar chart */}
+          <ResponsiveContainer width="100%" height={320}>
+            <BarChart data={propertyChartData} layout="vertical" margin={{ left: 10, right: 30 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
+              <XAxis type="number" tick={{ fontSize: 12 }} tickFormatter={(v: number) => `R$${(v / 1000).toFixed(0)}k`} />
+              <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={140} />
+              <Tooltip
+                formatter={(value: unknown) => formatCurrency(Number(value))}
+                labelFormatter={(label: unknown) => {
+                  const item = propertyChartData.find(p => p.name === String(label));
+                  return item?.fullName ?? String(label);
+                }}
+              />
+              <Legend />
+              <Bar dataKey="revenue" name="Receita" fill="#10B981" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="expenses" name="Despesas" fill="#EF4444" radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+
+          {/* Property cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mt-6">
+            {(dashboard?.byProperty ?? []).map((prop, i) => {
+              const isProfit = prop.profit >= 0;
+              return (
+                <div key={prop.propertyId} className="border border-surface-border rounded-lg p-4 hover:shadow-sm transition-shadow">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: PROPERTY_COLORS[i % PROPERTY_COLORS.length] }} />
+                    <h3 className="font-semibold text-sm text-neutral-800 truncate">{prop.propertyName}</h3>
+                  </div>
+                  <div className="grid grid-cols-2 gap-y-2 text-sm">
+                    <div>
+                      <p className="text-neutral-400 text-xs">Receita</p>
+                      <p className="font-semibold text-success">{formatCurrency(prop.revenue)}</p>
+                    </div>
+                    <div>
+                      <p className="text-neutral-400 text-xs">Despesas</p>
+                      <p className="font-semibold text-error">{formatCurrency(prop.expenses)}</p>
+                    </div>
+                    <div>
+                      <p className="text-neutral-400 text-xs">Lucro/Prejuízo</p>
+                      <p className={`font-bold ${isProfit ? 'text-success' : 'text-error'}`}>
+                        {isProfit ? '+' : ''}{formatCurrency(prop.profit)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-neutral-400 text-xs">Margem</p>
+                      <p className={`font-semibold ${prop.profitMargin >= 50 ? 'text-success' : prop.profitMargin >= 20 ? 'text-warning' : 'text-error'}`}>
+                        {prop.profitMargin.toFixed(1)}%
+                      </p>
+                    </div>
+                  </div>
+                  {prop.revenueShare > 0 && (
+                    <div className="mt-3">
+                      <div className="flex items-center justify-between text-xs text-neutral-400 mb-1">
+                        <span>Contribuição na receita</span>
+                        <span>{prop.revenueShare.toFixed(1)}%</span>
+                      </div>
+                      <div className="w-full bg-neutral-100 rounded-full h-1.5">
+                        <div className="h-1.5 rounded-full" style={{ width: `${Math.min(prop.revenueShare, 100)}%`, backgroundColor: PROPERTY_COLORS[i % PROPERTY_COLORS.length] }} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* AI Insights */}
       {dashboard?.insights?.length ? (

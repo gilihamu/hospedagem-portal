@@ -84,6 +84,16 @@ export interface CashFlowBalance {
   balance: number;
 }
 
+export interface PropertySummary {
+  propertyId: string;
+  propertyName: string;
+  revenue: number;
+  expenses: number;
+  profit: number;
+  profitMargin: number;
+  revenueShare: number;
+}
+
 export interface DashboardData {
   totalRevenue: number;
   totalExpenses: number;
@@ -93,6 +103,7 @@ export interface DashboardData {
   expenseGrowth?: number;
   topCategories: { name: string; amount: number; color: string }[];
   monthlyData: { month: string; revenue: number; expenses: number }[];
+  byProperty: PropertySummary[];
   insights?: { type: string; title: string; description: string; severity: string }[];
 }
 
@@ -169,6 +180,18 @@ export const financeService = {
       severity: i.severity ?? (typeof i.type === 'number' ? INSIGHT_SEVERITY[i.type] ?? 'low' : 'low'),
     }));
 
+    // Map byProperty
+    const rawProps = (raw.byProperty ?? raw.propertySummaries ?? []) as PropertySummary[];
+    const byProperty = rawProps.map(p => ({
+      propertyId: p.propertyId,
+      propertyName: p.propertyName,
+      revenue: p.revenue,
+      expenses: p.expenses,
+      profit: p.profit,
+      profitMargin: p.profitMargin,
+      revenueShare: p.revenueShare,
+    }));
+
     return {
       totalRevenue: (raw.totalRevenue as number) ?? 0,
       totalExpenses: (raw.totalExpenses as number) ?? 0,
@@ -178,6 +201,7 @@ export const financeService = {
       expenseGrowth: (raw.expenseChange ?? raw.expenseGrowth) as number | undefined,
       topCategories,
       monthlyData,
+      byProperty,
       insights,
     };
   },
