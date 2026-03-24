@@ -1,16 +1,16 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, Copy, Check, Phone, Mail, MessageCircle,
   Calendar, Clock, Users, CreditCard, Building2, User,
   MapPin, Star, Edit3, XCircle, CheckCircle, AlertTriangle,
-  Send, RefreshCw, FileText, History, PlusCircle, Printer,
-  MoreHorizontal, Ban, UserCheck, BedDouble, Hash, Globe,
-  ChevronDown, ChevronUp, ExternalLink,
+  History, PlusCircle, Printer,
+  MoreHorizontal, Ban, BedDouble, Hash,
+  ExternalLink,
 } from 'lucide-react';
 import { format, parseISO, differenceInDays, isFuture, isPast, isToday, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useBooking, useUpdateBookingStatus, useGuestBookings, useCalculatePrice } from '../../../hooks/useBookings';
+import { useBooking, useUpdateBookingStatus, useGuestBookings } from '../../../hooks/useBookings';
 import { useProperty } from '../../../hooks/useProperties';
 import { BookingStatusBadge } from '../../../components/shared/BookingStatusBadge';
 import { ChannelBadge } from '../../../components/shared/ChannelBadge';
@@ -78,7 +78,6 @@ export function BookingManagePage() {
   const [showMessageModal, setShowMessageModal] = useState(false);
   const [messageTemplate, setMessageTemplate] = useState('');
   const [messageChannel, setMessageChannel] = useState<'whatsapp' | 'email'>('whatsapp');
-  const [newStatus, setNewStatus] = useState<BookingStatus>('confirmed');
   const [extraDays, setExtraDays] = useState(1);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [statusChanging, setStatusChanging] = useState(false);
