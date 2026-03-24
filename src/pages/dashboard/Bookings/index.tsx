@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CheckCircle, XCircle, Calendar, LayoutList, CalendarDays, Phone } from 'lucide-react';
+import { CheckCircle, XCircle, Calendar, LayoutList, CalendarDays, Phone, Eye } from 'lucide-react';
 import { useAuthStore } from '../../../store/auth.store';
 import { useHostBookings, useUpdateBookingStatus } from '../../../hooks/useBookings';
 import { Tabs } from '../../../components/ui/Tabs';
@@ -14,7 +14,7 @@ import { useToast } from '../../../hooks/useToast';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import { CalendarView } from './CalendarView';
 import { cn } from '../../../utils/cn';
-import { ROUTES } from '../../../router/routes';
+import { ROUTES, bookingManageRoute } from '../../../router/routes';
 import type { Booking, BookingStatus } from '../../../types';
 
 type ViewMode = 'list' | 'calendar';
@@ -163,6 +163,9 @@ export function BookingsPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
+                        <Link to={bookingManageRoute(booking.id)} className="p-1.5 rounded-lg text-primary hover:bg-primary/10 transition-colors" title="Gerenciar">
+                          <Eye className="w-4 h-4" />
+                        </Link>
                         {booking.status === 'pending' && (
                           <>
                             <button

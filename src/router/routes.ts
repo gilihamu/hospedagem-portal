@@ -19,6 +19,7 @@ export const ROUTES = {
   DASHBOARD_BOOKINGS: '/dashboard/bookings',
   DASHBOARD_BOOKINGS_NEW: '/dashboard/bookings/new',
   DASHBOARD_BOOKINGS_CALENDAR: '/dashboard/bookings/calendar',
+  DASHBOARD_BOOKING_MANAGE: '/dashboard/bookings/:id/manage',
   DASHBOARD_GUESTS: '/dashboard/guests',
   DASHBOARD_GUEST_DETAIL: '/dashboard/guests/:id',
   DASHBOARD_ANALYTICS: '/dashboard/analytics',
@@ -79,3 +80,7 @@ export function guestDetailRoute(id: string) {
   return `/dashboard/guests/${id}`;
 }
 
+
+export function bookingManageRoute(id: string) {
+  return `/dashboard/bookings/${id}/manage`;
+}
