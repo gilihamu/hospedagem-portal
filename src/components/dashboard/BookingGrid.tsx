@@ -83,7 +83,7 @@ export function BookingGrid({ bookings, properties }: BookingGridProps) {
     return { startCol, span, startsBeforeRange, endsAfterRange };
   };
 
-  const navigate = (dir: number) => {
+  const navigateGrid = (dir: number) => {
     setStartDate(d => addDays(d, dir * numDays));
   };
 
@@ -142,13 +142,13 @@ export function BookingGrid({ bookings, properties }: BookingGridProps) {
           </div>
 
           {/* Navigation */}
-          <button onClick={() => navigate(-1)} className="p-1.5 rounded-lg border border-surface-border hover:bg-neutral-50">
+          <button onClick={() => navigateGrid(-1)} className="p-1.5 rounded-lg border border-surface-border hover:bg-neutral-50">
             <ChevronLeft className="w-4 h-4 text-neutral-500" />
           </button>
           <button onClick={goToToday} className="px-2 py-1 text-xs font-medium rounded-lg border border-surface-border hover:bg-neutral-50 text-neutral-600">
             Hoje
           </button>
-          <button onClick={() => navigate(1)} className="p-1.5 rounded-lg border border-surface-border hover:bg-neutral-50">
+          <button onClick={() => navigateGrid(1)} className="p-1.5 rounded-lg border border-surface-border hover:bg-neutral-50">
             <ChevronRight className="w-4 h-4 text-neutral-500" />
           </button>
         </div>
