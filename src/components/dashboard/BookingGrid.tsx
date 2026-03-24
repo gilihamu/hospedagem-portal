@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Calendar, Building2, Users } from 'lucide-react';
 import { format, addDays, subDays, startOfWeek, isSameDay, isWithinInterval, differenceInDays, parseISO, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -21,6 +22,7 @@ const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }
 const DAYS_OPTIONS = [7, 14, 30];
 
 export function BookingGrid({ bookings, properties }: BookingGridProps) {
+  const navigate = useNavigate();
   const [startDate, setStartDate] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [numDays, setNumDays] = useState(7);
   const [hoveredBooking, setHoveredBooking] = useState<string | null>(null);
@@ -266,6 +268,7 @@ export function BookingGrid({ bookings, properties }: BookingGridProps) {
                           left: `${leftPct}%`,
                           width: `${widthPct}%`,
                         }}
+                        onClick={() => navigate(`/dashboard/bookings/${booking.id}/manage`)}
                         onMouseEnter={(e) => handleBookingHover(booking, e)}
                         onMouseLeave={() => { setHoveredBooking(null); setTooltipBooking(null); }}
                         title={`${booking.guestName} — ${formatCurrency(booking.totalPrice)}`}
