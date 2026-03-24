@@ -96,6 +96,9 @@ export interface DashboardData {
   insights?: { type: string; title: string; description: string; severity: string }[];
 }
 
+const MONTH_LABELS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const INSIGHT_SEVERITY: Record<number, string> = { 1: 'low', 2: 'high', 3: 'medium' };
+
 export interface FinancialReport {
   summary: {
     totalRevenue: number;
@@ -143,7 +146,40 @@ export const financeService = {
   },
 
   async getDashboard(params?: Record<string, string>): Promise<DashboardData> {
-    return api.get<DashboardData>('/finance/dashboard/', params);
+    const raw = await api.get<Record<string, unknown>>('/finance/dashboard/', params);
+
+    // Map expensesByCategory → topCategories
+    const cats = (raw.expensesByCategory ?? raw.topCategories ?? []) as { categoryName?: string; name?: string; amount: number; color: string }[];
+    const topCategories = cats.map(c => ({ name: c.categoryName ?? c.name ?? '', amount: c.amount, color: c.color }));
+
+    // Map monthlyTrend → monthlyData
+    const trend = (raw.monthlyTrend ?? raw.monthlyData ?? []) as { year?: number; month: number | string; revenue: number; expenses: number }[];
+    const monthlyData = trend.map(m => ({
+      month: typeof m.month === 'number' ? MONTH_LABELS[m.month - 1] || String(m.month) : m.month,
+      revenue: m.revenue,
+      expenses: m.expenses,
+    }));
+
+    // Map insights
+    const rawInsights = (raw.insights ?? []) as { type?: number | string; title: string; message?: string; description?: string; severity?: string; value?: number }[];
+    const insights = rawInsights.map(i => ({
+      type: String(i.type ?? ''),
+      title: i.title,
+      description: i.message ?? i.description ?? '',
+      severity: i.severity ?? (typeof i.type === 'number' ? INSIGHT_SEVERITY[i.type] ?? 'low' : 'low'),
+    }));
+
+    return {
+      totalRevenue: (raw.totalRevenue as number) ?? 0,
+      totalExpenses: (raw.totalExpenses as number) ?? 0,
+      netProfit: (raw.netProfit as number) ?? 0,
+      profitMargin: (raw.profitMargin as number) ?? 0,
+      revenueGrowth: (raw.revenueChange ?? raw.revenueGrowth) as number | undefined,
+      expenseGrowth: (raw.expenseChange ?? raw.expenseGrowth) as number | undefined,
+      topCategories,
+      monthlyData,
+      insights,
+    };
   },
 
   async getCashFlow(params?: Record<string, string>): Promise<CashFlowResponse> {
