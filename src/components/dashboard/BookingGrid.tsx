@@ -1,6 +1,5 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Calendar, Building2, Users, Eye } from 'lucide-react';
+import { useState, useMemo, useRef } from 'react';
+import { ChevronLeft, ChevronRight, Calendar, Building2, Users } from 'lucide-react';
 import { format, addDays, subDays, startOfWeek, isSameDay, isWithinInterval, differenceInDays, parseISO, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { formatCurrency } from '../../utils/formatters';
