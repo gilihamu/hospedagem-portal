@@ -48,6 +48,7 @@ const DashboardBookings = lazy(() => import('../pages/dashboard/Bookings').then(
 const DashboardBookingsNew = lazy(() => import('../pages/dashboard/Bookings/NewBookingPage').then(m => ({ default: m.NewBookingPage })));
 const DashboardBookingsCalendar = lazy(() => import('../pages/dashboard/Bookings/CalendarPage').then(m => ({ default: m.BookingsCalendarPage })));
 const DashboardBookingManage = lazy(() => import('../pages/dashboard/Bookings/BookingManagePage').then(m => ({ default: m.BookingManagePage })));
+const DashboardImportBooking = lazy(() => import('../pages/dashboard/ImportBookingCom').then(m => ({ default: m.ImportBookingComPage })));
 const DashboardAnalytics = lazy(() => import('../pages/dashboard/Analytics').then(m => ({ default: m.AnalyticsPage })));
 const DashboardPayments = lazy(() => import('../pages/dashboard/Payments').then(m => ({ default: m.PaymentsPage })));
 const DashboardProfile = lazy(() => import('../pages/dashboard/Profile').then(m => ({ default: m.ProfilePage })));
@@ -195,6 +196,7 @@ export const router = createBrowserRouter([
               { path: ROUTES.DASHBOARD_BOOKINGS_NEW, element: withSuspense(DashboardBookingsNew) },
               { path: ROUTES.DASHBOARD_BOOKINGS_CALENDAR, element: withSuspense(DashboardBookingsCalendar) },
               { path: ROUTES.DASHBOARD_BOOKING_MANAGE, element: withSuspense(DashboardBookingManage) },
+              { path: ROUTES.DASHBOARD_IMPORT_BOOKING, element: withSuspense(DashboardImportBooking) },
               { path: ROUTES.DASHBOARD_ANALYTICS, element: withSuspense(DashboardAnalytics) },
               { path: ROUTES.DASHBOARD_PAYMENTS, element: withSuspense(DashboardPayments) },
               { path: ROUTES.DASHBOARD_GUEST_GUIDE, element: withSuspense(DashboardGuestGuide) },

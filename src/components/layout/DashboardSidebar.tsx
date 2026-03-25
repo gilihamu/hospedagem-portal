@@ -22,6 +22,7 @@ import {
   Receipt,
   ArrowDownUp,
   FileText,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/auth.store';
 import { useUIStore } from '../../store/ui.store';
@@ -59,6 +60,7 @@ const navItems: NavItem[] = [
     children: [
       { label: 'Lista',       icon: LayoutList,   href: ROUTES.DASHBOARD_BOOKINGS },
       { label: 'Calendário',  icon: CalendarDays, href: ROUTES.DASHBOARD_BOOKINGS_CALENDAR },
+      { label: 'Importar',     icon: FileSpreadsheet, href: ROUTES.DASHBOARD_IMPORT_BOOKING },
     ],
   },
   { label: 'Pagamentos',      icon: CreditCard,  href: ROUTES.DASHBOARD_PAYMENTS },
