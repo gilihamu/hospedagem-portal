@@ -1,9 +1,12 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Calendar, Building2, Users, DollarSign, Lock, PlusCircle, Clock, FileText, Unlock, X } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { ChevronLeft, ChevronRight, Calendar, Building2, Users, DollarSign, Lock, PlusCircle, Clock, FileText, Unlock, X, Check, Loader2 } from 'lucide-react';
 import { format, addDays, subDays, startOfWeek, isSameDay, isWithinInterval, differenceInDays, parseISO, isToday, isBefore } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { formatCurrency } from '../../utils/formatters';
+import { api } from '../../lib/api';
+import { useToast } from '../../hooks/useToast';
 import type { Booking, ChannelSlug } from '../../types';
 
 interface BookingGridProps {
@@ -24,6 +27,8 @@ interface SelectionState {
   propertyName: string;
   dates: Date[];
 }
+
+type ModalType = 'price' | 'min_stay' | 'note' | null;
 
 const CHANNEL_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
   booking_com: { label: 'Booking.com', color: '#003580', icon: 'B' },
@@ -66,6 +71,8 @@ function ChannelDot({ slug }: { slug?: ChannelSlug }) {
 
 export function BookingGrid({ bookings, properties }: BookingGridProps) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const toast = useToast();
   const [startDate, setStartDate] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [numDays, setNumDays] = useState(14);
   const [hoveredBooking, setHoveredBooking] = useState<string | null>(null);
@@ -73,29 +80,36 @@ export function BookingGrid({ bookings, properties }: BookingGridProps) {
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const [dayAction, setDayAction] = useState<DayAction | null>(null);
   const [selection, setSelection] = useState<SelectionState | null>(null);
+  const [activeModal, setActiveModal] = useState<ModalType>(null);
+  const [modalInput, setModalInput] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
   const selectionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
   const lastClickRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  // Close menu on outside click
+  const clearAll = useCallback(() => {
+    setDayAction(null);
+    setSelection(null);
+    setActiveModal(null);
+    setModalInput('');
+    if (selectionTimer.current) clearTimeout(selectionTimer.current);
+  }, []);
+
   useEffect(() => {
-    if (!dayAction && !selection) return;
+    if (!dayAction && !selection && !activeModal) return;
     const handle = (e: MouseEvent) => {
       const target = e.target as Node;
       if (menuRef.current?.contains(target)) return;
-      // If clicking inside the grid cells, let handleDayCellClick handle it
-      const gridEl = gridRef.current;
-      if (gridEl?.contains(target)) return;
-      setDayAction(null);
-      setSelection(null);
-      if (selectionTimer.current) clearTimeout(selectionTimer.current);
+      if (modalRef.current?.contains(target)) return;
+      if (gridRef.current?.contains(target)) return;
+      clearAll();
     };
     document.addEventListener('mousedown', handle);
     return () => document.removeEventListener('mousedown', handle);
-  }, [dayAction, selection]);
+  }, [dayAction, selection, activeModal, clearAll]);
 
-  // Cleanup timer on unmount
   useEffect(() => {
     return () => { if (selectionTimer.current) clearTimeout(selectionTimer.current); };
   }, []);
@@ -158,41 +172,26 @@ export function BookingGrid({ bookings, properties }: BookingGridProps) {
       const rect = gridRef.current?.getBoundingClientRect();
       if (!rect) return;
       const sorted = [...sel.dates].sort((a, b) => a.getTime() - b.getTime());
-      setDayAction({
-        propertyId: sel.propertyId,
-        propertyName: sel.propertyName,
-        dates: sorted,
-        x: Math.min(x, rect.width - 220),
-        y: y + 10,
-      });
+      setDayAction({ propertyId: sel.propertyId, propertyName: sel.propertyName, dates: sorted, x: Math.min(x, rect.width - 220), y: y + 10 });
     }, 2000);
   }, []);
 
   const handleDayCellClick = (propertyId: string, propertyName: string, day: Date, e: React.MouseEvent) => {
     if (!isDayAvailable(propertyId, day)) return;
-    // Close any open menu
     setDayAction(null);
-
+    setActiveModal(null);
     const rect = gridRef.current?.getBoundingClientRect();
     const clickX = rect ? e.clientX - rect.left : 0;
     const clickY = rect ? e.clientY - rect.top : 0;
     lastClickRef.current = { x: clickX, y: clickY };
-
     setSelection(prev => {
       let next: SelectionState;
       if (prev && prev.propertyId === propertyId) {
-        // Same property: toggle date in selection
         const already = prev.dates.some(d => isSameDay(d, day));
-        const newDates = already
-          ? prev.dates.filter(d => !isSameDay(d, day))
-          : [...prev.dates, day];
-        if (newDates.length === 0) {
-          if (selectionTimer.current) clearTimeout(selectionTimer.current);
-          return null;
-        }
+        const newDates = already ? prev.dates.filter(d => !isSameDay(d, day)) : [...prev.dates, day];
+        if (newDates.length === 0) { if (selectionTimer.current) clearTimeout(selectionTimer.current); return null; }
         next = { propertyId, propertyName, dates: newDates };
       } else {
-        // Different property or no previous selection: start fresh
         next = { propertyId, propertyName, dates: [day] };
       }
       startMenuTimer(next, clickX, clickY);
@@ -200,24 +199,94 @@ export function BookingGrid({ bookings, properties }: BookingGridProps) {
     });
   };
 
-  const handleDayActionClick = (actionId: string) => {
+  const refreshData = () => {
+    queryClient.invalidateQueries({ queryKey: ['bookings'] });
+    queryClient.invalidateQueries({ queryKey: ['properties'] });
+    queryClient.invalidateQueries({ queryKey: ['analytics'] });
+  };
+
+  const callCalendarAPI = async (propertyId: string, dates: Date[], payload: Record<string, unknown>) => {
+    const daysPayload = dates.map(d => ({ date: format(d, 'yyyy-MM-dd'), ...payload }));
+    await api.put('/properties/' + propertyId + '/calendar', { days: daysPayload });
+  };
+
+  const handleDayActionClick = async (actionId: string) => {
     if (!dayAction) return;
     const sorted = [...dayAction.dates].sort((a, b) => a.getTime() - b.getTime());
-    const checkIn = format(sorted[0], 'yyyy-MM-dd');
-    const checkOut = format(addDays(sorted[sorted.length - 1], 1), 'yyyy-MM-dd');
+
     if (actionId === 'create') {
+      const checkIn = format(sorted[0], 'yyyy-MM-dd');
+      const checkOut = format(addDays(sorted[sorted.length - 1], 1), 'yyyy-MM-dd');
       navigate('/dashboard/bookings/new?propertyId=' + dayAction.propertyId + '&checkIn=' + checkIn + '&checkOut=' + checkOut);
-    } else {
-      navigate('/dashboard/properties/' + dayAction.propertyId + '/calendar?from=' + checkIn + '&to=' + checkOut + '&action=' + actionId);
+      clearAll();
+      return;
     }
-    setDayAction(null);
-    setSelection(null);
-    if (selectionTimer.current) clearTimeout(selectionTimer.current);
+
+    if (actionId === 'block') {
+      setActionLoading(true);
+      try {
+        await callCalendarAPI(dayAction.propertyId, sorted, { isBlocked: true, blockReason: 'Bloqueio manual' });
+        toast.success('Datas bloqueadas com sucesso! (' + sorted.length + ' dia(s))');
+        refreshData();
+      } catch { toast.error('Erro ao bloquear datas'); }
+      setActionLoading(false);
+      clearAll();
+      return;
+    }
+
+    if (actionId === 'unblock') {
+      setActionLoading(true);
+      try {
+        await callCalendarAPI(dayAction.propertyId, sorted, { isBlocked: false });
+        toast.success('Datas desbloqueadas! (' + sorted.length + ' dia(s))');
+        refreshData();
+      } catch { toast.error('Erro ao desbloquear datas'); }
+      setActionLoading(false);
+      clearAll();
+      return;
+    }
+
+    if (actionId === 'price' || actionId === 'min_stay' || actionId === 'note') {
+      setActiveModal(actionId);
+      setModalInput('');
+      setDayAction(prev => prev);
+      return;
+    }
+  };
+
+  const handleModalSubmit = async () => {
+    if (!dayAction) return;
+    const sorted = [...dayAction.dates].sort((a, b) => a.getTime() - b.getTime());
+    setActionLoading(true);
+
+    try {
+      if (activeModal === 'price') {
+        const val = modalInput.trim() === '' ? null : parseFloat(modalInput.replace(',', '.'));
+        if (val !== null && (isNaN(val) || val < 0)) { toast.error('Valor invalido'); setActionLoading(false); return; }
+        await callCalendarAPI(dayAction.propertyId, sorted, { priceOverride: val });
+        toast.success(val ? 'Preco atualizado para ' + formatCurrency(val) + ' (' + sorted.length + ' dia(s))' : 'Preco restaurado ao valor base (' + sorted.length + ' dia(s))');
+      } else if (activeModal === 'min_stay') {
+        const val = modalInput.trim() === '' ? null : parseInt(modalInput, 10);
+        if (val !== null && (isNaN(val) || val < 1)) { toast.error('Valor invalido'); setActionLoading(false); return; }
+        await callCalendarAPI(dayAction.propertyId, sorted, { minStay: val });
+        toast.success(val ? 'Estadia minima: ' + val + ' noite(s) (' + sorted.length + ' dia(s))' : 'Estadia minima removida');
+      } else if (activeModal === 'note') {
+        const val = modalInput.trim() || null;
+        await callCalendarAPI(dayAction.propertyId, sorted, { note: val });
+        toast.success(val ? 'Nota adicionada (' + sorted.length + ' dia(s))' : 'Nota removida');
+      }
+      refreshData();
+    } catch { toast.error('Erro ao salvar'); }
+
+    setActionLoading(false);
+    clearAll();
   };
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const propColClass = 'w-[140px] sm:w-[180px] flex-shrink-0';
   const dayCellClass = numDays <= 7 ? 'min-w-[100px] sm:min-w-[120px]' : numDays <= 14 ? 'min-w-[70px] sm:min-w-[90px]' : 'min-w-[44px] sm:min-w-[56px]';
+
+  const basePrice = dayAction ? properties.find(p => p.id === dayAction.propertyId)?.pricePerNight : undefined;
 
   return (
     <div className="card-base overflow-hidden relative" ref={gridRef}>
@@ -345,14 +414,59 @@ export function BookingGrid({ bookings, properties }: BookingGridProps) {
         </div>
       )}
 
-      {dayAction && (
+      {dayAction && !activeModal && (
         <div ref={menuRef} className="absolute z-50 bg-white rounded-2xl shadow-2xl border border-surface-border overflow-hidden w-[210px]" style={{ left: dayAction.x, top: Math.min(dayAction.y, (gridRef.current?.offsetHeight || 400) - 300) }}>
           <div className="px-4 py-2.5 bg-gradient-to-r from-neutral-50 to-white border-b border-surface-border flex items-center justify-between">
-            <div><p className="text-xs font-bold text-neutral-700">Acoes</p><p className="text-[10px] text-neutral-400">{dayAction.propertyName} · {dayAction.dates.length === 1 ? format(dayAction.dates[0], "dd MMM", { locale: ptBR }) : format(dayAction.dates[0], "dd MMM", { locale: ptBR }) + ' — ' + format(dayAction.dates[dayAction.dates.length - 1], "dd MMM", { locale: ptBR })} ({dayAction.dates.length} {dayAction.dates.length === 1 ? 'dia' : 'dias'})</p></div>
-            <button onClick={() => { setDayAction(null); setSelection(null); if (selectionTimer.current) clearTimeout(selectionTimer.current); }} className="p-1 rounded-lg hover:bg-neutral-100 transition-colors"><X className="w-3.5 h-3.5 text-neutral-400" /></button>
+            <div>
+              <p className="text-xs font-bold text-neutral-700">Acoes</p>
+              <p className="text-[10px] text-neutral-400">{dayAction.propertyName} {'\u00b7'} {dayAction.dates.length === 1 ? format(dayAction.dates[0], 'dd MMM', { locale: ptBR }) : format(dayAction.dates[0], 'dd MMM', { locale: ptBR }) + ' \u2014 ' + format(dayAction.dates[dayAction.dates.length - 1], 'dd MMM', { locale: ptBR })} ({dayAction.dates.length} {dayAction.dates.length === 1 ? 'dia' : 'dias'})</p>
+            </div>
+            <button onClick={clearAll} className="p-1 rounded-lg hover:bg-neutral-100 transition-colors"><X className="w-3.5 h-3.5 text-neutral-400" /></button>
           </div>
           <div className="p-1.5">
-            {DAY_ACTIONS.map(action => (<button key={action.id} onClick={() => handleDayActionClick(action.id)} className={'w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left transition-colors ' + action.bg}><action.icon className={'w-4 h-4 ' + action.color + ' flex-shrink-0'} /><span className="text-sm font-medium text-neutral-700">{action.label}</span></button>))}
+            {actionLoading ? (
+              <div className="flex items-center justify-center py-4"><Loader2 className="w-5 h-5 text-primary animate-spin" /></div>
+            ) : (
+              DAY_ACTIONS.map(action => (<button key={action.id} onClick={() => handleDayActionClick(action.id)} className={'w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left transition-colors ' + action.bg}><action.icon className={'w-4 h-4 ' + action.color + ' flex-shrink-0'} /><span className="text-sm font-medium text-neutral-700">{action.label}</span></button>))
+            )}
+          </div>
+        </div>
+      )}
+
+      {dayAction && activeModal && (
+        <div ref={modalRef} className="absolute z-50 bg-white rounded-2xl shadow-2xl border border-surface-border overflow-hidden w-[260px]" style={{ left: dayAction.x, top: Math.min(dayAction.y, (gridRef.current?.offsetHeight || 400) - 280) }}>
+          <div className="px-4 py-3 border-b border-surface-border flex items-center justify-between">
+            <p className="text-sm font-bold text-neutral-800">
+              {activeModal === 'price' ? 'Preco por noite' : activeModal === 'min_stay' ? 'Estadia minima' : 'Nota interna'}
+            </p>
+            <button onClick={clearAll} className="p-1 rounded-lg hover:bg-neutral-100 transition-colors"><X className="w-3.5 h-3.5 text-neutral-400" /></button>
+          </div>
+          <div className="p-4">
+            {activeModal === 'price' && basePrice && (
+              <p className="text-xs text-neutral-400 mb-2">Preco base: <span className="font-semibold text-neutral-600">{formatCurrency(basePrice)}</span></p>
+            )}
+            <input
+              type={activeModal === 'note' ? 'text' : 'number'}
+              value={modalInput}
+              onChange={(e) => setModalInput(e.target.value)}
+              placeholder={activeModal === 'price' ? 'Ex: 350.00' : activeModal === 'min_stay' ? 'Ex: 2' : 'Escreva uma nota...'}
+              className="w-full px-3 py-2.5 rounded-xl border border-surface-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+              autoFocus
+              onKeyDown={(e) => { if (e.key === 'Enter') handleModalSubmit(); }}
+              min={activeModal === 'min_stay' ? '1' : '0'}
+              step={activeModal === 'price' ? '0.01' : '1'}
+            />
+            <p className="text-[10px] text-neutral-400 mt-1.5">
+              {activeModal === 'price' ? 'Deixe vazio para restaurar o preco base' : activeModal === 'min_stay' ? 'Deixe vazio para remover restricao' : 'Deixe vazio para remover a nota'}
+            </p>
+            <button
+              onClick={handleModalSubmit}
+              disabled={actionLoading}
+              className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primary/90 disabled:opacity-50 transition-colors"
+            >
+              {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+              Aplicar em {dayAction.dates.length} dia(s)
+            </button>
           </div>
         </div>
       )}
