@@ -14,9 +14,15 @@ interface BookingGridProps {
 interface DayAction {
   propertyId: string;
   propertyName: string;
-  date: Date;
+  dates: Date[];
   x: number;
   y: number;
+}
+
+interface SelectionState {
+  propertyId: string;
+  propertyName: string;
+  dates: Date[];
 }
 
 const CHANNEL_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
@@ -66,17 +72,33 @@ export function BookingGrid({ bookings, properties }: BookingGridProps) {
   const [tooltipBooking, setTooltipBooking] = useState<Booking | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const [dayAction, setDayAction] = useState<DayAction | null>(null);
+  const [selection, setSelection] = useState<SelectionState | null>(null);
+  const selectionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const lastClickRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
+  // Close menu on outside click
   useEffect(() => {
-    if (!dayAction) return;
+    if (!dayAction && !selection) return;
     const handle = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setDayAction(null);
+      const target = e.target as Node;
+      if (menuRef.current?.contains(target)) return;
+      // If clicking inside the grid cells, let handleDayCellClick handle it
+      const gridEl = gridRef.current;
+      if (gridEl?.contains(target)) return;
+      setDayAction(null);
+      setSelection(null);
+      if (selectionTimer.current) clearTimeout(selectionTimer.current);
     };
     document.addEventListener('mousedown', handle);
     return () => document.removeEventListener('mousedown', handle);
-  }, [dayAction]);
+  }, [dayAction, selection]);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => { if (selectionTimer.current) clearTimeout(selectionTimer.current); };
+  }, []);
 
   const days = useMemo(() => Array.from({ length: numDays }, (_, i) => addDays(startDate, i)), [startDate, numDays]);
   const activeBookings = useMemo(() => bookings.filter(b => b.status !== 'cancelled'), [bookings]);
@@ -117,23 +139,80 @@ export function BookingGrid({ bookings, properties }: BookingGridProps) {
     if (rect) setTooltipPos({ x: e.clientX - rect.left, y: e.clientY - rect.top - 10 });
   };
 
-  const handleDayCellClick = (propertyId: string, propertyName: string, day: Date, e: React.MouseEvent) => {
-    const hasBooking = bookings.some(b => {
+  const isDayAvailable = useCallback((propertyId: string, day: Date) => {
+    return !bookings.some(b => {
       if (b.propertyId !== propertyId || b.status === 'cancelled') return false;
       const ci = parseISO(b.checkIn); const co = parseISO(b.checkOut);
       return isWithinInterval(day, { start: ci, end: subDays(co, 1) }) || isSameDay(day, ci);
     });
-    if (hasBooking) return;
+  }, [bookings]);
+
+  const isDaySelected = useCallback((propertyId: string, day: Date) => {
+    if (!selection || selection.propertyId !== propertyId) return false;
+    return selection.dates.some(d => isSameDay(d, day));
+  }, [selection]);
+
+  const startMenuTimer = useCallback((sel: SelectionState, x: number, y: number) => {
+    if (selectionTimer.current) clearTimeout(selectionTimer.current);
+    selectionTimer.current = setTimeout(() => {
+      const rect = gridRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const sorted = [...sel.dates].sort((a, b) => a.getTime() - b.getTime());
+      setDayAction({
+        propertyId: sel.propertyId,
+        propertyName: sel.propertyName,
+        dates: sorted,
+        x: Math.min(x, rect.width - 220),
+        y: y + 10,
+      });
+    }, 2000);
+  }, []);
+
+  const handleDayCellClick = (propertyId: string, propertyName: string, day: Date, e: React.MouseEvent) => {
+    if (!isDayAvailable(propertyId, day)) return;
+    // Close any open menu
+    setDayAction(null);
+
     const rect = gridRef.current?.getBoundingClientRect();
-    if (rect) setDayAction({ propertyId, propertyName, date: day, x: Math.min(e.clientX - rect.left, rect.width - 220), y: e.clientY - rect.top + 10 });
+    const clickX = rect ? e.clientX - rect.left : 0;
+    const clickY = rect ? e.clientY - rect.top : 0;
+    lastClickRef.current = { x: clickX, y: clickY };
+
+    setSelection(prev => {
+      let next: SelectionState;
+      if (prev && prev.propertyId === propertyId) {
+        // Same property: toggle date in selection
+        const already = prev.dates.some(d => isSameDay(d, day));
+        const newDates = already
+          ? prev.dates.filter(d => !isSameDay(d, day))
+          : [...prev.dates, day];
+        if (newDates.length === 0) {
+          if (selectionTimer.current) clearTimeout(selectionTimer.current);
+          return null;
+        }
+        next = { propertyId, propertyName, dates: newDates };
+      } else {
+        // Different property or no previous selection: start fresh
+        next = { propertyId, propertyName, dates: [day] };
+      }
+      startMenuTimer(next, clickX, clickY);
+      return next;
+    });
   };
 
   const handleDayActionClick = (actionId: string) => {
     if (!dayAction) return;
-    const dateStr = format(dayAction.date, 'yyyy-MM-dd');
-    if (actionId === 'create') navigate('/dashboard/bookings/new?propertyId=' + dayAction.propertyId + '&checkIn=' + dateStr);
-    else navigate('/dashboard/properties/' + dayAction.propertyId + '/calendar?date=' + dateStr + '&action=' + actionId);
+    const sorted = [...dayAction.dates].sort((a, b) => a.getTime() - b.getTime());
+    const checkIn = format(sorted[0], 'yyyy-MM-dd');
+    const checkOut = format(addDays(sorted[sorted.length - 1], 1), 'yyyy-MM-dd');
+    if (actionId === 'create') {
+      navigate('/dashboard/bookings/new?propertyId=' + dayAction.propertyId + '&checkIn=' + checkIn + '&checkOut=' + checkOut);
+    } else {
+      navigate('/dashboard/properties/' + dayAction.propertyId + '/calendar?from=' + checkIn + '&to=' + checkOut + '&action=' + actionId);
+    }
     setDayAction(null);
+    setSelection(null);
+    if (selectionTimer.current) clearTimeout(selectionTimer.current);
   };
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -201,10 +280,12 @@ export function BookingGrid({ bookings, properties }: BookingGridProps) {
               <div className="flex flex-1 relative">
                 {days.map((day, i) => {
                   const today = isToday(day); const isWeekend = day.getDay() === 0 || day.getDay() === 6;
-                  const hasBookingOnDay = propBookings.some(b => { if (b.status === 'cancelled') return false; const ci = parseISO(b.checkIn); const co = parseISO(b.checkOut); return isWithinInterval(day, { start: ci, end: subDays(co, 1) }) || isSameDay(day, ci); });
-                  return (<div key={i} onClick={(e) => !hasBookingOnDay && handleDayCellClick(property.id, property.name, day, e)}
-                    className={dayCellClass + ' flex-1 border-r border-surface-border/60 last:border-r-0 transition-colors ' + (today ? 'bg-primary/[0.04]' : isWeekend ? 'bg-neutral-50/60' : '') + (!hasBookingOnDay ? ' cursor-pointer hover:bg-emerald-50/60 group/cell' : '')} style={{ minHeight: '48px' }}>
-                    {!hasBookingOnDay && <div className="w-full h-full flex items-center justify-center opacity-0 group-hover/cell:opacity-100 transition-opacity"><PlusCircle className="w-3.5 h-3.5 text-emerald-400" /></div>}
+                  const available = isDayAvailable(property.id, day);
+                  const selected = isDaySelected(property.id, day);
+                  return (<div key={i} onClick={(e) => available && handleDayCellClick(property.id, property.name, day, e)}
+                    className={dayCellClass + ' flex-1 border-r border-surface-border/60 last:border-r-0 transition-colors ' + (selected ? 'bg-primary/15 ring-1 ring-inset ring-primary/40' : today ? 'bg-primary/[0.04]' : isWeekend ? 'bg-neutral-50/60' : '') + (available ? ' cursor-pointer hover:bg-emerald-50/60 group/cell' : '')} style={{ minHeight: '48px' }}>
+                    {available && !selected && <div className="w-full h-full flex items-center justify-center opacity-0 group-hover/cell:opacity-100 transition-opacity"><PlusCircle className="w-3.5 h-3.5 text-emerald-400" /></div>}
+                    {selected && <div className="w-full h-full flex items-center justify-center"><div className="w-2 h-2 rounded-full bg-primary animate-pulse" /></div>}
                   </div>);
                 })}
                 {propBookings.map((booking) => {
@@ -256,8 +337,8 @@ export function BookingGrid({ bookings, properties }: BookingGridProps) {
       {dayAction && (
         <div ref={menuRef} className="absolute z-50 bg-white rounded-2xl shadow-2xl border border-surface-border overflow-hidden w-[210px]" style={{ left: dayAction.x, top: Math.min(dayAction.y, (gridRef.current?.offsetHeight || 400) - 300) }}>
           <div className="px-4 py-2.5 bg-gradient-to-r from-neutral-50 to-white border-b border-surface-border flex items-center justify-between">
-            <div><p className="text-xs font-bold text-neutral-700">Acoes</p><p className="text-[10px] text-neutral-400">{dayAction.propertyName} - {format(dayAction.date, "dd MMM", { locale: ptBR })}</p></div>
-            <button onClick={() => setDayAction(null)} className="p-1 rounded-lg hover:bg-neutral-100 transition-colors"><X className="w-3.5 h-3.5 text-neutral-400" /></button>
+            <div><p className="text-xs font-bold text-neutral-700">Acoes</p><p className="text-[10px] text-neutral-400">{dayAction.propertyName} · {dayAction.dates.length === 1 ? format(dayAction.dates[0], "dd MMM", { locale: ptBR }) : format(dayAction.dates[0], "dd MMM", { locale: ptBR }) + ' — ' + format(dayAction.dates[dayAction.dates.length - 1], "dd MMM", { locale: ptBR })} ({dayAction.dates.length} {dayAction.dates.length === 1 ? 'dia' : 'dias'})</p></div>
+            <button onClick={() => { setDayAction(null); setSelection(null); if (selectionTimer.current) clearTimeout(selectionTimer.current); }} className="p-1 rounded-lg hover:bg-neutral-100 transition-colors"><X className="w-3.5 h-3.5 text-neutral-400" /></button>
           </div>
           <div className="p-1.5">
             {DAY_ACTIONS.map(action => (<button key={action.id} onClick={() => handleDayActionClick(action.id)} className={'w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left transition-colors ' + action.bg}><action.icon className={'w-4 h-4 ' + action.color + ' flex-shrink-0'} /><span className="text-sm font-medium text-neutral-700">{action.label}</span></button>))}
