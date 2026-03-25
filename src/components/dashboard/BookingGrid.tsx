@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight, Calendar, Building2, Users, DollarSign, Lock, PlusCircle, Clock, FileText, Unlock, X, Check, Loader2 } from 'lucide-react';
 import { format, addDays, subDays, startOfWeek, isSameDay, isWithinInterval, differenceInDays, parseISO, isToday, isBefore } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -12,6 +12,15 @@ import type { Booking, ChannelSlug } from '../../types';
 interface BookingGridProps {
   bookings: Booking[];
   properties: { id: string; name: string; pricePerNight?: number }[];
+}
+
+interface CalendarDayData {
+  date: string;
+  priceOverride: number | null;
+  isBlocked: boolean;
+  blockReason: string | null;
+  minStay: number | null;
+  note: string | null;
 }
 
 interface DayAction {
@@ -115,6 +124,38 @@ export function BookingGrid({ bookings, properties }: BookingGridProps) {
   }, []);
 
   const days = useMemo(() => Array.from({ length: numDays }, (_, i) => addDays(startDate, i)), [startDate, numDays]);
+  const rangeFrom = format(days[0], 'yyyy-MM-dd');
+  const rangeTo = format(addDays(days[days.length - 1], 1), 'yyyy-MM-dd');
+
+  // Fetch calendar data for ALL properties in one batch
+  const propertyIds = useMemo(() => properties.map(p => p.id), [properties]);
+  const { data: calendarMap } = useQuery({
+    queryKey: ['grid-calendar', propertyIds, rangeFrom, rangeTo],
+    queryFn: async () => {
+      const results: Record<string, CalendarDayData[]> = {};
+      await Promise.all(propertyIds.map(async (pid) => {
+        try {
+          const data = await api.get<CalendarDayData[]>('/properties/' + pid + '/calendar', { from: rangeFrom, to: rangeTo });
+          results[pid] = data;
+        } catch {
+          results[pid] = [];
+        }
+      }));
+      return results;
+    },
+    enabled: propertyIds.length > 0,
+    staleTime: 30000,
+  });
+
+  // Helper to get calendar info for a specific property+date
+  const getCalendarDay = useCallback((propertyId: string, day: Date): CalendarDayData | undefined => {
+    if (!calendarMap) return undefined;
+    const propDays = calendarMap[propertyId];
+    if (!propDays) return undefined;
+    const dateStr = format(day, 'yyyy-MM-dd');
+    return propDays.find(d => d.date === dateStr);
+  }, [calendarMap]);
+
   const activeBookings = useMemo(() => bookings.filter(b => b.status !== 'cancelled'), [bookings]);
 
   const dailyCounts = useMemo(() => days.map(day => activeBookings.filter(b => {
@@ -153,13 +194,19 @@ export function BookingGrid({ bookings, properties }: BookingGridProps) {
     if (rect) setTooltipPos({ x: e.clientX - rect.left, y: e.clientY - rect.top - 10 });
   };
 
-  const isDayAvailable = useCallback((propertyId: string, day: Date) => {
-    return !bookings.some(b => {
+  // A day has a booking on it?
+  const hasDayBooking = useCallback((propertyId: string, day: Date) => {
+    return bookings.some(b => {
       if (b.propertyId !== propertyId || b.status === 'cancelled') return false;
       const ci = parseISO(b.checkIn); const co = parseISO(b.checkOut);
       return isWithinInterval(day, { start: ci, end: subDays(co, 1) }) || isSameDay(day, ci);
     });
   }, [bookings]);
+
+  // Can the user click this cell? (no booking on it)
+  const isCellClickable = useCallback((propertyId: string, day: Date) => {
+    return !hasDayBooking(propertyId, day);
+  }, [hasDayBooking]);
 
   const isDaySelected = useCallback((propertyId: string, day: Date) => {
     if (!selection || selection.propertyId !== propertyId) return false;
@@ -177,7 +224,7 @@ export function BookingGrid({ bookings, properties }: BookingGridProps) {
   }, []);
 
   const handleDayCellClick = (propertyId: string, propertyName: string, day: Date, e: React.MouseEvent) => {
-    if (!isDayAvailable(propertyId, day)) return;
+    if (!isCellClickable(propertyId, day)) return;
     setDayAction(null);
     setActiveModal(null);
     const rect = gridRef.current?.getBoundingClientRect();
@@ -199,11 +246,12 @@ export function BookingGrid({ bookings, properties }: BookingGridProps) {
     });
   };
 
-  const refreshData = () => {
+  const refreshData = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['bookings'] });
     queryClient.invalidateQueries({ queryKey: ['properties'] });
     queryClient.invalidateQueries({ queryKey: ['analytics'] });
-  };
+    queryClient.invalidateQueries({ queryKey: ['grid-calendar'] });
+  }, [queryClient]);
 
   const callCalendarAPI = async (propertyId: string, dates: Date[], payload: Record<string, unknown>) => {
     const daysPayload = dates.map(d => ({ date: format(d, 'yyyy-MM-dd'), ...payload }));
@@ -226,7 +274,7 @@ export function BookingGrid({ bookings, properties }: BookingGridProps) {
       setActionLoading(true);
       try {
         await callCalendarAPI(dayAction.propertyId, sorted, { isBlocked: true, blockReason: 'Bloqueio manual' });
-        toast.success('Datas bloqueadas com sucesso! (' + sorted.length + ' dia(s))');
+        toast.success('Datas bloqueadas! (' + sorted.length + ' dia(s))');
         refreshData();
       } catch { toast.error('Erro ao bloquear datas'); }
       setActionLoading(false);
@@ -249,7 +297,6 @@ export function BookingGrid({ bookings, properties }: BookingGridProps) {
     if (actionId === 'price' || actionId === 'min_stay' || actionId === 'note') {
       setActiveModal(actionId);
       setModalInput('');
-      setDayAction(prev => prev);
       return;
     }
   };
@@ -264,16 +311,16 @@ export function BookingGrid({ bookings, properties }: BookingGridProps) {
         const val = modalInput.trim() === '' ? null : parseFloat(modalInput.replace(',', '.'));
         if (val !== null && (isNaN(val) || val < 0)) { toast.error('Valor invalido'); setActionLoading(false); return; }
         await callCalendarAPI(dayAction.propertyId, sorted, { priceOverride: val });
-        toast.success(val ? 'Preco atualizado para ' + formatCurrency(val) + ' (' + sorted.length + ' dia(s))' : 'Preco restaurado ao valor base (' + sorted.length + ' dia(s))');
+        toast.success(val ? 'Preco atualizado para ' + formatCurrency(val) + ' (' + sorted.length + ' dia(s))' : 'Preco restaurado ao valor base');
       } else if (activeModal === 'min_stay') {
         const val = modalInput.trim() === '' ? null : parseInt(modalInput, 10);
         if (val !== null && (isNaN(val) || val < 1)) { toast.error('Valor invalido'); setActionLoading(false); return; }
         await callCalendarAPI(dayAction.propertyId, sorted, { minStay: val });
-        toast.success(val ? 'Estadia minima: ' + val + ' noite(s) (' + sorted.length + ' dia(s))' : 'Estadia minima removida');
+        toast.success(val ? 'Estadia minima: ' + val + ' noite(s)' : 'Estadia minima removida');
       } else if (activeModal === 'note') {
         const val = modalInput.trim() || null;
         await callCalendarAPI(dayAction.propertyId, sorted, { note: val });
-        toast.success(val ? 'Nota adicionada (' + sorted.length + ' dia(s))' : 'Nota removida');
+        toast.success(val ? 'Nota adicionada' : 'Nota removida');
       }
       refreshData();
     } catch { toast.error('Erro ao salvar'); }
@@ -285,11 +332,11 @@ export function BookingGrid({ bookings, properties }: BookingGridProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const propColClass = 'w-[140px] sm:w-[180px] flex-shrink-0';
   const dayCellClass = numDays <= 7 ? 'min-w-[100px] sm:min-w-[120px]' : numDays <= 14 ? 'min-w-[70px] sm:min-w-[90px]' : 'min-w-[44px] sm:min-w-[56px]';
-
   const basePrice = dayAction ? properties.find(p => p.id === dayAction.propertyId)?.pricePerNight : undefined;
 
   return (
     <div className="card-base overflow-hidden relative" ref={gridRef}>
+      {/* TOOLBAR */}
       <div className="flex items-center justify-between flex-wrap gap-2 px-4 py-3 border-b border-surface-border bg-gradient-to-r from-neutral-50 to-white">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center"><Calendar className="w-4 h-4 text-primary" /></div>
@@ -310,8 +357,10 @@ export function BookingGrid({ bookings, properties }: BookingGridProps) {
         </div>
       </div>
 
+      {/* GRID */}
       <div className="overflow-x-auto" ref={scrollContainerRef}>
         <div className="inline-flex flex-col min-w-full">
+          {/* Header */}
           <div className="flex border-b border-surface-border bg-white sticky top-0 z-10">
             <div className={propColClass + ' px-3 py-2.5 border-r border-surface-border flex items-center gap-1.5'}>
               <Building2 className="w-3.5 h-3.5 text-neutral-400" /><span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">Propriedade</span>
@@ -326,6 +375,7 @@ export function BookingGrid({ bookings, properties }: BookingGridProps) {
             })}
           </div>
 
+          {/* Occupancy */}
           <div className="flex border-b-2 border-surface-border bg-white">
             <div className={propColClass + ' px-3 py-1.5 border-r border-surface-border flex items-center gap-1'}>
               <Users className="w-3 h-3 text-neutral-400" /><span className="text-[10px] font-semibold text-neutral-400">Ocupacao</span>
@@ -339,6 +389,7 @@ export function BookingGrid({ bookings, properties }: BookingGridProps) {
             })}
           </div>
 
+          {/* Property rows */}
           {properties.map((property) => {
             const propBookings = getPropertyBookings(property.id);
             return (<div key={property.id} className="flex border-b border-surface-border/80 hover:bg-blue-50/30 transition-colors relative group">
@@ -349,25 +400,59 @@ export function BookingGrid({ bookings, properties }: BookingGridProps) {
               <div className="flex flex-1 relative">
                 {days.map((day, i) => {
                   const today = isToday(day); const isWeekend = day.getDay() === 0 || day.getDay() === 6;
-                  const available = isDayAvailable(property.id, day);
+                  const hasBooking = hasDayBooking(property.id, day);
+                  const calDay = getCalendarDay(property.id, day);
+                  const blocked = calDay?.isBlocked === true;
+                  const priceOverride = calDay?.priceOverride;
+                  const clickable = !hasBooking;
                   const selected = isDaySelected(property.id, day);
-                  return (<div key={i} onClick={(e) => available && handleDayCellClick(property.id, property.name, day, e)}
-                    className={dayCellClass + ' flex-1 border-r border-surface-border/60 last:border-r-0 transition-colors ' + (selected ? 'bg-primary/15 ring-1 ring-inset ring-primary/40' : today ? 'bg-primary/[0.04]' : isWeekend ? 'bg-neutral-50/60' : '') + (available ? ' cursor-pointer hover:bg-emerald-50/60 group/cell' : '')} style={{ minHeight: '48px' }}>
-                    {available && !selected && (
+                  const displayPrice = priceOverride ?? property.pricePerNight;
+                  const hasCustomPrice = priceOverride != null && priceOverride !== property.pricePerNight;
+
+                  return (<div key={i} onClick={(e) => clickable && handleDayCellClick(property.id, property.name, day, e)}
+                    className={dayCellClass + ' flex-1 border-r border-surface-border/60 last:border-r-0 transition-colors '
+                      + (selected ? 'bg-primary/15 ring-1 ring-inset ring-primary/40 '
+                        : blocked ? 'bg-red-50/80 '
+                        : today ? 'bg-primary/[0.04] '
+                        : isWeekend ? 'bg-neutral-50/60 '
+                        : '')
+                      + (clickable ? 'cursor-pointer hover:bg-emerald-50/40 group/cell ' : '')}
+                    style={{ minHeight: '48px' }}>
+
+                    {/* BLOCKED cell */}
+                    {blocked && !hasBooking && !selected && (
+                      <div className="w-full h-full flex flex-col items-center justify-center" title={calDay?.blockReason || 'Bloqueado'}>
+                        <Lock className="w-3 h-3 text-red-400 mb-0.5" />
+                        <span className="text-[8px] font-semibold text-red-400">Bloqueado</span>
+                      </div>
+                    )}
+
+                    {/* AVAILABLE cell (not blocked, not booked) */}
+                    {!blocked && !hasBooking && !selected && (
                       <div className="w-full h-full flex flex-col items-center justify-center group/cell">
-                        {property.pricePerNight ? (
+                        {displayPrice ? (
                           <>
-                            <span className="text-[10px] font-bold text-emerald-600/70 group-hover/cell:text-emerald-600 transition-colors">{formatCurrency(property.pricePerNight)}</span>
-                            <span className="text-[8px] text-neutral-300 group-hover/cell:text-neutral-400 transition-colors">/noite</span>
+                            <span className={'text-[10px] font-bold transition-colors '
+                              + (hasCustomPrice ? 'text-amber-600' : 'text-emerald-600/70 group-hover/cell:text-emerald-600')}>
+                              {formatCurrency(displayPrice)}
+                            </span>
+                            <span className={'text-[8px] transition-colors '
+                              + (hasCustomPrice ? 'text-amber-500/60' : 'text-neutral-300 group-hover/cell:text-neutral-400')}>
+                              {hasCustomPrice ? 'customizado' : '/noite'}
+                            </span>
                           </>
                         ) : (
                           <PlusCircle className="w-3.5 h-3.5 text-emerald-400 opacity-0 group-hover/cell:opacity-100 transition-opacity" />
                         )}
                       </div>
                     )}
+
+                    {/* SELECTED cell */}
                     {selected && <div className="w-full h-full flex items-center justify-center"><div className="w-2 h-2 rounded-full bg-primary animate-pulse" /></div>}
                   </div>);
                 })}
+
+                {/* Booking bars */}
                 {propBookings.map((booking) => {
                   const { startCol, span, startsBeforeRange, endsAfterRange } = getBookingSpan(booking);
                   const colors = STATUS_COLORS[booking.status] || STATUS_COLORS.confirmed;
@@ -395,6 +480,7 @@ export function BookingGrid({ bookings, properties }: BookingGridProps) {
         </div>
       </div>
 
+      {/* TOOLTIP */}
       {tooltipBooking && (
         <div className="absolute z-50 bg-white rounded-xl shadow-2xl border border-surface-border p-3 pointer-events-none w-[260px]" style={{ left: Math.min(tooltipPos.x, (gridRef.current?.offsetWidth || 400) - 280), top: Math.max(tooltipPos.y - 140, 10) }}>
           <div className="flex items-center gap-2 mb-2">
@@ -414,6 +500,7 @@ export function BookingGrid({ bookings, properties }: BookingGridProps) {
         </div>
       )}
 
+      {/* ACTION MENU */}
       {dayAction && !activeModal && (
         <div ref={menuRef} className="absolute z-50 bg-white rounded-2xl shadow-2xl border border-surface-border overflow-hidden w-[210px]" style={{ left: dayAction.x, top: Math.min(dayAction.y, (gridRef.current?.offsetHeight || 400) - 300) }}>
           <div className="px-4 py-2.5 bg-gradient-to-r from-neutral-50 to-white border-b border-surface-border flex items-center justify-between">
@@ -433,6 +520,7 @@ export function BookingGrid({ bookings, properties }: BookingGridProps) {
         </div>
       )}
 
+      {/* INLINE MODAL */}
       {dayAction && activeModal && (
         <div ref={modalRef} className="absolute z-50 bg-white rounded-2xl shadow-2xl border border-surface-border overflow-hidden w-[260px]" style={{ left: dayAction.x, top: Math.min(dayAction.y, (gridRef.current?.offsetHeight || 400) - 280) }}>
           <div className="px-4 py-3 border-b border-surface-border flex items-center justify-between">
@@ -442,7 +530,7 @@ export function BookingGrid({ bookings, properties }: BookingGridProps) {
             <button onClick={clearAll} className="p-1 rounded-lg hover:bg-neutral-100 transition-colors"><X className="w-3.5 h-3.5 text-neutral-400" /></button>
           </div>
           <div className="p-4">
-            {activeModal === 'price' && basePrice && (
+            {activeModal === 'price' && basePrice != null && (
               <p className="text-xs text-neutral-400 mb-2">Preco base: <span className="font-semibold text-neutral-600">{formatCurrency(basePrice)}</span></p>
             )}
             <input
@@ -459,11 +547,8 @@ export function BookingGrid({ bookings, properties }: BookingGridProps) {
             <p className="text-[10px] text-neutral-400 mt-1.5">
               {activeModal === 'price' ? 'Deixe vazio para restaurar o preco base' : activeModal === 'min_stay' ? 'Deixe vazio para remover restricao' : 'Deixe vazio para remover a nota'}
             </p>
-            <button
-              onClick={handleModalSubmit}
-              disabled={actionLoading}
-              className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primary/90 disabled:opacity-50 transition-colors"
-            >
+            <button onClick={handleModalSubmit} disabled={actionLoading}
+              className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primary/90 disabled:opacity-50 transition-colors">
               {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
               Aplicar em {dayAction.dates.length} dia(s)
             </button>
@@ -471,10 +556,12 @@ export function BookingGrid({ bookings, properties }: BookingGridProps) {
         </div>
       )}
 
+      {/* LEGEND */}
       <div className="flex items-center justify-between flex-wrap gap-3 px-4 py-2.5 border-t border-surface-border bg-gradient-to-r from-neutral-50 to-white">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2.5">
             {Object.entries(STATUS_COLORS).filter(([k]) => k !== 'cancelled').map(([key, cfg]) => (<span key={key} className="flex items-center gap-1 text-[10px] text-neutral-500 font-medium"><span className={'w-3 h-2 rounded-sm ' + cfg.bg} /> {cfg.label}</span>))}
+            <span className="flex items-center gap-1 text-[10px] text-neutral-500 font-medium"><Lock className="w-2.5 h-2.5 text-red-400" /> Bloqueado</span>
           </div>
           <div className="hidden sm:flex items-center gap-2 border-l border-surface-border pl-3">
             {Object.entries(CHANNEL_CONFIG).slice(0, 3).map(([key, cfg]) => (<span key={key} className="flex items-center gap-1 text-[10px] text-neutral-400"><span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cfg.color }} />{cfg.label}</span>))}
