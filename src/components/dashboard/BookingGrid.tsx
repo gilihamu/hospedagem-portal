@@ -8,7 +8,7 @@ import type { Booking, ChannelSlug } from '../../types';
 
 interface BookingGridProps {
   bookings: Booking[];
-  properties: { id: string; name: string }[];
+  properties: { id: string; name: string; pricePerNight?: number }[];
 }
 
 interface DayAction {
@@ -284,7 +284,18 @@ export function BookingGrid({ bookings, properties }: BookingGridProps) {
                   const selected = isDaySelected(property.id, day);
                   return (<div key={i} onClick={(e) => available && handleDayCellClick(property.id, property.name, day, e)}
                     className={dayCellClass + ' flex-1 border-r border-surface-border/60 last:border-r-0 transition-colors ' + (selected ? 'bg-primary/15 ring-1 ring-inset ring-primary/40' : today ? 'bg-primary/[0.04]' : isWeekend ? 'bg-neutral-50/60' : '') + (available ? ' cursor-pointer hover:bg-emerald-50/60 group/cell' : '')} style={{ minHeight: '48px' }}>
-                    {available && !selected && <div className="w-full h-full flex items-center justify-center opacity-0 group-hover/cell:opacity-100 transition-opacity"><PlusCircle className="w-3.5 h-3.5 text-emerald-400" /></div>}
+                    {available && !selected && (
+                      <div className="w-full h-full flex flex-col items-center justify-center group/cell">
+                        {property.pricePerNight ? (
+                          <>
+                            <span className="text-[10px] font-bold text-emerald-600/70 group-hover/cell:text-emerald-600 transition-colors">{formatCurrency(property.pricePerNight)}</span>
+                            <span className="text-[8px] text-neutral-300 group-hover/cell:text-neutral-400 transition-colors">/noite</span>
+                          </>
+                        ) : (
+                          <PlusCircle className="w-3.5 h-3.5 text-emerald-400 opacity-0 group-hover/cell:opacity-100 transition-opacity" />
+                        )}
+                      </div>
+                    )}
                     {selected && <div className="w-full h-full flex items-center justify-center"><div className="w-2 h-2 rounded-full bg-primary animate-pulse" /></div>}
                   </div>);
                 })}

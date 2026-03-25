@@ -88,7 +88,7 @@ export function OverviewPage() {
       {properties && properties.length > 0 && bookings && (
         <BookingGrid
           bookings={bookings}
-          properties={properties.map(p => ({ id: p.id, name: p.name }))}
+          properties={properties.map(p => ({ id: p.id, name: p.name, pricePerNight: p.pricePerNight }))}
         />
       )}
 
