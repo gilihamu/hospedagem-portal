@@ -116,36 +116,47 @@ jobs:
           cd /opt/hospedabr
 
           echo "══════════════════════════════════════════"
-          echo "  🔨 Rebuilding frontend..."
+          echo "  🔨 Rebuilding frontend image..."
           echo "══════════════════════════════════════════"
 
-          # Build only the frontend image
           docker compose -f docker-compose.apps.yml -f docker-compose.prod.yml build frontend
 
           echo "══════════════════════════════════════════"
-          echo "  🚀 Deploying frontend..."
+          echo "  🗑  Removing old container (idempotent)..."
           echo "══════════════════════════════════════════"
 
-          # Stop + recreate only frontend (--no-deps avoids touching other services)
-          docker compose -f docker-compose.apps.yml -f docker-compose.prod.yml up -d --no-deps --force-recreate frontend
+          # Force-remove the named container so compose can recreate it cleanly.
+          # This handles the case where a previous deployment left a container that
+          # compose no longer recognises as its own (project-name mismatch).
+          docker rm -f hospedabr-frontend 2>/dev/null || true
 
-          echo "⏳ Waiting..."
+          echo "══════════════════════════════════════════"
+          echo "  🚀 Starting frontend..."
+          echo "══════════════════════════════════════════"
+
+          docker compose -f docker-compose.apps.yml -f docker-compose.prod.yml up -d --no-deps frontend
+
+          echo "⏳ Waiting for container to be ready..."
           sleep 5
 
           echo "══════════════════════════════════════════"
           echo "  🧪 Health Check"
           echo "══════════════════════════════════════════"
 
-          FE=$(curl -sf -o /dev/null -w "%{http_code}" http://localhost/ 2>&1 || echo "000")
-          API=$(curl -sf -o /dev/null -w "%{http_code}" http://localhost/api/properties?page=1 2>&1 || echo "000")
+          # Check the container directly on its mapped port (3000) — nginx on :80
+          # redirects to HTTPS so we probe the container port directly.
+          FE=$(curl -sf -o /dev/null -w "%{http_code}" http://localhost:3000/ 2>&1 || echo "000")
+          API=$(curl -sf -o /dev/null -w "%{http_code}" http://localhost:5283/api/properties?page=1 2>&1 || echo "000")
 
-          echo "  Frontend: $FE"
-          echo "  API proxy: $API"
+          echo "  Frontend (container :3000): $FE"
+          echo "  API Gateway (:5283):        $API"
 
           if [ "$FE" = "200" ]; then
             echo "  ✅ Frontend deployed successfully!"
           else
-            echo "  ⚠️  Frontend may still be starting..."
+            echo "  ❌ Frontend health check failed (HTTP $FE)"
+            docker logs hospedabr-frontend --tail=20
+            exit 1
           fi
 
           docker image prune -f > /dev/null 2>&1
