@@ -134,7 +134,7 @@ export function CredentialsPanel() {
           <Select
             label="Ambiente"
             value={environment}
-            onChange={(val) => setEnvironment(val as 'test' | 'production')}
+            onChange={(val) => setEnvironment(val as unknown as 'test' | 'production')}
             options={[
               { value: 'test', label: 'Teste (sandbox)' },
               { value: 'production', label: 'Produção' },

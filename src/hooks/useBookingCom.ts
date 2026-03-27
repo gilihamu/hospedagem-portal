@@ -2,9 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { bookingComService } from '../services/booking-com.service';
 import type {
   SaveCredentialsRequest,
-  ChannelCredentialStatus,
   CredentialTestResult,
-  PropertyStatusResult,
   SyncLogEntry,
   ChannelReservation,
   FullSyncResult,

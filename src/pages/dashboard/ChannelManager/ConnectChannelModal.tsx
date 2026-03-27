@@ -16,7 +16,7 @@ const bookingComSchema = z.object({
   username: z.string().min(1, 'Usuário é obrigatório'),
   password: z.string().min(1, 'Senha é obrigatória'),
   providerId: z.string().optional(),
-  environment: z.enum(['test', 'production']).default('test'),
+  environment: z.enum(['test', 'production']),
 });
 
 const genericSchema = z.object({
@@ -137,7 +137,7 @@ export function ConnectChannelModal({ open, channel, onClose, businessId }: Prop
 
   return (
     <Modal
-      open={open}
+      isOpen={open}
       onClose={handleClose}
       title={step === 'success' ? '' : `Conectar ${channel.name}`}
     >
@@ -186,7 +186,7 @@ export function ConnectChannelModal({ open, channel, onClose, businessId }: Prop
             <Select
               label="Ambiente"
               value={bookingComForm.watch('environment')}
-              onChange={(val) => bookingComForm.setValue('environment', val as 'test' | 'production')}
+              onChange={(val) => bookingComForm.setValue('environment', val as unknown as 'test' | 'production')}
               options={[
                 { value: 'test', label: 'Teste (sandbox)' },
                 { value: 'production', label: 'Produção' },

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link2, Plus, RefreshCw, Settings, History, AlertCircle, CheckCircle2, Loader2, Trash2, Download, Calendar, Shield, Building2, Activity, Clock } from 'lucide-react';
+import { Link2, Plus, RefreshCw, Settings, History, AlertCircle, CheckCircle2, Trash2, Download, Calendar, Shield, Building2, Activity } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
 import { Spinner } from '../../../components/ui/Spinner';
@@ -251,8 +251,7 @@ export function ChannelManagerPage() {
 
       {logsConnection && (
         <ImportLogsModal
-          open={!!logsConnection}
-          connectionId={logsConnection.id}
+          connection={logsConnection}
           channelName={getChannelInfo(logsConnection.channelSlug)?.name || ''}
           onClose={() => setLogsConnection(null)}
         />
@@ -260,7 +259,7 @@ export function ChannelManagerPage() {
 
       {/* Settings Modal */}
       {settingsConnection && (
-        <Modal open={!!settingsConnection} onClose={() => setSettingsConnection(null)} title={`Configurações — ${getChannelInfo(settingsConnection.channelSlug)?.name}`}>
+        <Modal isOpen={!!settingsConnection} onClose={() => setSettingsConnection(null)} title={`Configurações — ${getChannelInfo(settingsConnection.channelSlug)?.name}`}>
           <div className="space-y-4 p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -269,7 +268,7 @@ export function ChannelManagerPage() {
               </div>
               <Switch
                 checked={settingsConnection.autoSync}
-                onCheckedChange={(checked) => handleUpdateSettings(settingsConnection.id, { autoSync: checked })}
+                onChange={(checked: boolean) => handleUpdateSettings(settingsConnection.id, { autoSync: checked })}
               />
             </div>
             <div>
@@ -292,7 +291,7 @@ export function ChannelManagerPage() {
 
       {/* Disconnect Confirmation */}
       {disconnectConnection && (
-        <Modal open={!!disconnectConnection} onClose={() => setDisconnectConnection(null)} title="Desconectar Canal">
+        <Modal isOpen={!!disconnectConnection} onClose={() => setDisconnectConnection(null)} title="Desconectar Canal">
           <div className="p-4 space-y-4">
             <div className="flex items-center gap-2 p-3 bg-red-50 text-red-700 rounded-lg text-sm">
               <AlertCircle className="w-4 h-4 shrink-0" />

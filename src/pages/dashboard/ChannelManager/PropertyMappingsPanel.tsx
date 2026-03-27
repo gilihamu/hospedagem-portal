@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Building2, RefreshCw, ExternalLink, CheckCircle2, AlertCircle, Loader2, Globe } from 'lucide-react';
+import { Building2, RefreshCw, CheckCircle2, AlertCircle, Loader2, Globe } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
 import { Spinner } from '../../../components/ui/Spinner';

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Activity, RefreshCw, Copy, CheckCircle2, AlertCircle, Clock, ArrowUpDown, Loader2, Webhook } from 'lucide-react';
+import { Activity, RefreshCw, Copy, CheckCircle2, AlertCircle, Clock, ArrowUpDown, Webhook } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
 import { Spinner } from '../../../components/ui/Spinner';
