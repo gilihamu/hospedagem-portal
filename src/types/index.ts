@@ -305,6 +305,117 @@ export interface ChannelImportLog {
   completedAt?: string;
 }
 
+
+// ── Channel Credentials (Booking.com Integration) ────────────────────────────
+export interface ChannelCredentialStatus {
+  isConfigured: boolean;
+  username?: string;
+  providerId?: string;
+  isActive: boolean;
+  isVerified: boolean;
+  verifiedAt?: string;
+  environment?: string;
+  lastError?: string;
+}
+
+export interface SaveCredentialsRequest {
+  username: string;
+  password: string;
+  providerId?: string;
+  environment?: 'test' | 'production';
+}
+
+export interface CredentialTestResult {
+  success: boolean;
+  message: string;
+  isVerified: boolean;
+  environment?: string;
+}
+
+// ── Property Channel Mappings ────────────────────────────────────────────────
+export interface PropertyChannel {
+  id: string;
+  tenantId: string;
+  propertyId: string;
+  channelId: string;
+  externalPropertyId?: string;
+  externalPropertyName?: string;
+  status: string;
+  autoSyncRates: boolean;
+  autoSyncAvailability: boolean;
+  autoSyncReservations: boolean;
+  syncIntervalMinutes: number;
+  lastSyncAt?: string;
+  lastRatesSyncAt?: string;
+  lastAvailabilitySyncAt?: string;
+  lastReservationsSyncAt?: string;
+  externalHotelStatus?: string;
+  externalContentScore?: number;
+  externalConnectionStatus?: string;
+}
+
+export interface PropertyStatusResult {
+  hotelCode: string;
+  hotelName: string;
+  currencyCode: string;
+  hotelStatus?: string;
+  contentScore?: number;
+  connectionStatus?: string;
+  created?: string;
+  lastChange?: string;
+  connections: { connectionType: string; connectionState: string }[];
+}
+
+// ── Sync Logs ────────────────────────────────────────────────────────────────
+export interface SyncLogEntry {
+  id: string;
+  propertyChannelId: string;
+  syncType: string;
+  direction: string;
+  status: string;
+  startedAt: string;
+  completedAt?: string;
+  recordsProcessed: number;
+  recordsSucceeded: number;
+  recordsFailed: number;
+  errorMessage?: string;
+}
+
+// ── Channel Reservations ─────────────────────────────────────────────────────
+export interface ChannelReservation {
+  id: string;
+  propertyChannelId: string;
+  externalReservationId: string;
+  bookingId?: string;
+  status: string;
+  guestName?: string;
+  guestEmail?: string;
+  guestPhone?: string;
+  checkInDate: string;
+  checkOutDate: string;
+  totalAmount?: number;
+  currency?: string;
+  receivedAt: string;
+  processedAt?: string;
+  processError?: string;
+  reservationType?: string;
+  roomsCount: number;
+  adults: number;
+  children: number;
+  specialRequests?: string;
+  bookingComStatus?: string;
+  paymentType?: string;
+}
+
+// ── Full Sync ────────────────────────────────────────────────────────────────
+export interface FullSyncResult {
+  hotelCode: string;
+  propertyStatusSynced: boolean;
+  errors: string[];
+  completedAt: string;
+  duration: string;
+}
+
 // ── Channel Analytics ────────────────────────────────────────────────────────
 export interface ChannelAnalyticsData {
   channel: string;

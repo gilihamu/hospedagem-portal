@@ -54,12 +54,15 @@ export function Header() {
           <Link to={ROUTES.SEARCH} className="text-sm font-medium text-neutral-600 hover:text-primary transition-colors">
             Buscar
           </Link>
-          <Link to="#como-funciona" className="text-sm font-medium text-neutral-600 hover:text-primary transition-colors">
+          <a href="/#funcionalidades" className="text-sm font-medium text-neutral-600 hover:text-primary transition-colors">
+            Funcionalidades
+          </a>
+          <a href="/#como-funciona" className="text-sm font-medium text-neutral-600 hover:text-primary transition-colors">
             Como funciona
-          </Link>
-          <Link to="#anunciar" className="text-sm font-medium text-neutral-600 hover:text-primary transition-colors">
-            Seja um Anunciante
-          </Link>
+          </a>
+          <a href="/#planos" className="text-sm font-medium text-neutral-600 hover:text-primary transition-colors">
+            Planos
+          </a>
         </nav>
 
         {/* Right Actions */}

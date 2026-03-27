@@ -2,19 +2,30 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, CheckCircle2, ExternalLink, Shield, Key, Mail } from 'lucide-react';
+import { Loader2, CheckCircle2, ExternalLink, Shield, Key, Mail, Eye, EyeOff } from 'lucide-react';
 import { Modal } from '../../../components/ui/Modal';
 import { Input } from '../../../components/ui/Input';
 import { Button } from '../../../components/ui/Button';
+import { Select } from '../../../components/ui/Select';
 import { useConnectChannel, useImportProperties, useImportBookings } from '../../../hooks/useChannels';
+import { useSaveBookingComCredentials, useTestBookingComCredentials } from '../../../hooks/useBookingCom';
 import type { Channel } from '../../../types';
 
-const schema = z.object({
+// ── Schemas per channel ──────────────────────────────────────────────────────
+const bookingComSchema = z.object({
+  username: z.string().min(1, 'Usuário é obrigatório'),
+  password: z.string().min(1, 'Senha é obrigatória'),
+  providerId: z.string().optional(),
+  environment: z.enum(['test', 'production']).default('test'),
+});
+
+const genericSchema = z.object({
   email: z.string().email('Email inválido'),
   apiKey: z.string().optional(),
 });
 
-type FormData = z.infer<typeof schema>;
+type BookingComFormData = z.infer<typeof bookingComSchema>;
+type GenericFormData = z.infer<typeof genericSchema>;
 
 interface Props {
   open: boolean;
@@ -23,61 +34,101 @@ interface Props {
   businessId: string;
 }
 
-type Step = 'credentials' | 'connecting' | 'oauth' | 'importing' | 'success';
+type Step = 'credentials' | 'connecting' | 'testing' | 'importing' | 'success';
 
 export function ConnectChannelModal({ open, channel, onClose, businessId }: Props) {
   const [step, setStep] = useState<Step>('credentials');
   const [importedCounts, setImportedCounts] = useState({ properties: 0, bookings: 0 });
+  const [showPassword, setShowPassword] = useState(false);
 
   const connectMutation = useConnectChannel();
   const importPropertiesMutation = useImportProperties();
   const importBookingsMutation = useImportBookings();
+  const saveCredentialsMutation = useSaveBookingComCredentials();
+  const testCredentialsMutation = useTestBookingComCredentials();
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    reset,
-  } = useForm<FormData>({
-    resolver: zodResolver(schema),
+  const isBookingCom = channel?.slug === 'booking_com';
+
+  const bookingComForm = useForm<BookingComFormData>({
+    resolver: zodResolver(bookingComSchema),
+    defaultValues: { environment: 'test' },
+  });
+
+  const genericForm = useForm<GenericFormData>({
+    resolver: zodResolver(genericSchema),
   });
 
   const handleClose = () => {
-    reset();
+    bookingComForm.reset();
+    genericForm.reset();
     setStep('credentials');
     setImportedCounts({ properties: 0, bookings: 0 });
+    setShowPassword(false);
     onClose();
   };
 
-  const onSubmit = async (data: FormData) => {
+  const onBookingComSubmit = async (data: BookingComFormData) => {
     if (!channel) return;
 
     try {
-      // Simulate OAuth flow
-      setStep('oauth');
+      setStep('connecting');
+      await saveCredentialsMutation.mutateAsync({
+        username: data.username,
+        password: data.password,
+        providerId: data.providerId || undefined,
+        environment: data.environment,
+      });
+
+      setStep('testing');
+      const testResult = await testCredentialsMutation.mutateAsync();
+
+      if (!testResult.success) {
+        setStep('credentials');
+        return;
+      }
+
+      // Also create the generic connection record
+      const connection = await connectMutation.mutateAsync({
+        businessId,
+        channelSlug: channel.slug,
+        accountEmail: data.username,
+      });
+
+      setStep('importing');
+      const [props, bookings] = await Promise.all([
+        importPropertiesMutation.mutateAsync(connection.id),
+        importBookingsMutation.mutateAsync(connection.id),
+      ]);
+
+      setImportedCounts({ properties: props.length, bookings: bookings.length });
+      setStep('success');
+    } catch {
+      setStep('credentials');
+    }
+  };
+
+  const onGenericSubmit = async (data: GenericFormData) => {
+    if (!channel) return;
+
+    try {
+      setStep('connecting');
       await new Promise(res => setTimeout(res, 1500));
 
-      setStep('connecting');
       const connection = await connectMutation.mutateAsync({
         businessId,
         channelSlug: channel.slug,
         accountEmail: data.email,
       });
 
-      // Auto-import after connection
       setStep('importing');
-      
-      const properties = await importPropertiesMutation.mutateAsync(connection.id);
-      const bookings = await importBookingsMutation.mutateAsync(connection.id);
-      
-      setImportedCounts({
-        properties: properties.length,
-        bookings: bookings.length,
-      });
+      const [props, bookings] = await Promise.all([
+        importPropertiesMutation.mutateAsync(connection.id),
+        importBookingsMutation.mutateAsync(connection.id),
+      ]);
 
+      setImportedCounts({ properties: props.length, bookings: bookings.length });
       setStep('success');
-    } catch (error) {
-      console.error('Connection error:', error);
+    } catch {
       setStep('credentials');
     }
   };
@@ -86,69 +137,120 @@ export function ConnectChannelModal({ open, channel, onClose, businessId }: Prop
 
   return (
     <Modal
-      isOpen={open}
+      open={open}
       onClose={handleClose}
       title={step === 'success' ? '' : `Conectar ${channel.name}`}
     >
-      <div className="space-y-6">
+      <div className="p-4 sm:p-6">
         {/* Credentials Step */}
-        {step === 'credentials' && (
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            <div className="flex items-center gap-4 p-4 rounded-xl" style={{ backgroundColor: `${channel.color}10` }}>
-              <div
-                className="w-16 h-16 rounded-xl flex items-center justify-center text-white font-bold text-2xl"
-                style={{ backgroundColor: channel.color }}
+        {step === 'credentials' && isBookingCom && (
+          <form onSubmit={bookingComForm.handleSubmit(onBookingComSubmit)} className="space-y-5">
+            <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg">
+              <Shield className="w-5 h-5 text-blue-600 shrink-0" />
+              <p className="text-sm text-blue-700">
+                Insira as credenciais da <strong>Booking.com Connectivity API</strong>.
+                Disponíveis no Extranet em Connectivity &gt; XML Credentials.
+              </p>
+            </div>
+
+            <Input
+              label="Usuário da API"
+              placeholder="Ex: hotel_api_user"
+              error={bookingComForm.formState.errors.username?.message}
+              {...bookingComForm.register('username')}
+            />
+
+            <div className="relative">
+              <Input
+                label="Senha da API"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="••••••••"
+                error={bookingComForm.formState.errors.password?.message}
+                {...bookingComForm.register('password')}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-9 text-neutral-400 hover:text-neutral-600"
               >
-                {channel.name.charAt(0)}
-              </div>
-              <div>
-                <h3 className="font-semibold text-neutral-800">{channel.name}</h3>
-                <p className="text-sm text-neutral-500">{channel.description}</p>
-              </div>
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
 
-            <div className="space-y-4">
-              <Input
-                label="Email da Conta"
-                placeholder={`Seu email cadastrado no ${channel.name}`}
-                prefixIcon={<Mail className="w-4 h-4" />}
-                error={errors.email?.message}
-                {...register('email')}
-              />
+            <Input
+              label="Provider ID (opcional)"
+              placeholder="Ex: 12345"
+              {...bookingComForm.register('providerId')}
+            />
 
-              <Input
-                label="Chave de API (opcional)"
-                placeholder="Informe se tiver uma chave de API"
-                prefixIcon={<Key className="w-4 h-4" />}
-                error={errors.apiKey?.message}
-                {...register('apiKey')}
-              />
-            </div>
+            <Select
+              label="Ambiente"
+              value={bookingComForm.watch('environment')}
+              onChange={(val) => bookingComForm.setValue('environment', val as 'test' | 'production')}
+              options={[
+                { value: 'test', label: 'Teste (sandbox)' },
+                { value: 'production', label: 'Produção' },
+              ]}
+            />
 
-            <div className="p-4 bg-neutral-50 rounded-lg border border-neutral-200">
-              <div className="flex items-start gap-3">
-                <Shield className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                <div className="text-sm text-neutral-600">
-                  <p className="font-medium text-neutral-800 mb-1">Conexão Segura</p>
-                  <p>Você será redirecionado para autorizar o acesso no {channel.name}. Não armazenamos suas credenciais de login.</p>
-                </div>
+            {testCredentialsMutation.data && !testCredentialsMutation.data.success && (
+              <div className="p-3 bg-red-50 text-red-700 text-sm rounded-lg">
+                Falha na verificação das credenciais. Verifique usuário e senha.
               </div>
-            </div>
+            )}
 
-            <div className="flex justify-end gap-3">
-              <Button type="button" variant="outline" onClick={handleClose}>
-                Cancelar
-              </Button>
-              <Button type="submit">
-                <ExternalLink className="w-4 h-4 mr-2" />
-                Conectar com {channel.name}
+            <div className="flex justify-between items-center pt-2">
+              <a
+                href="https://admin.booking.com/hotel/hoteladmin/extranet_ng/manage/connectivity.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-primary hover:underline flex items-center gap-1"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                Booking.com Extranet
+              </a>
+              <Button type="submit" loading={saveCredentialsMutation.isPending}>
+                <Key className="w-4 h-4 mr-1" />
+                Conectar
               </Button>
             </div>
           </form>
         )}
 
-        {/* OAuth Simulation Step */}
-        {step === 'oauth' && (
+        {step === 'credentials' && !isBookingCom && (
+          <form onSubmit={genericForm.handleSubmit(onGenericSubmit)} className="space-y-5">
+            <div className="flex items-center gap-3 p-4 bg-neutral-50 rounded-lg">
+              <Mail className="w-5 h-5 text-neutral-500 shrink-0" />
+              <p className="text-sm text-neutral-600">
+                Insira o email associado à sua conta no <strong>{channel.name}</strong>.
+              </p>
+            </div>
+
+            <Input
+              label="Email da conta"
+              type="email"
+              placeholder="seu@email.com"
+              error={genericForm.formState.errors.email?.message}
+              {...genericForm.register('email')}
+            />
+
+            <Input
+              label="API Key (opcional)"
+              placeholder="Chave de API, se aplicável"
+              {...genericForm.register('apiKey')}
+            />
+
+            <div className="flex justify-end pt-2">
+              <Button type="submit">
+                <Key className="w-4 h-4 mr-1" />
+                Conectar
+              </Button>
+            </div>
+          </form>
+        )}
+
+        {/* Testing credentials (Booking.com only) */}
+        {step === 'testing' && (
           <div className="py-8 text-center">
             <div
               className="w-20 h-20 rounded-2xl flex items-center justify-center text-white font-bold text-3xl mx-auto mb-6 animate-pulse"
@@ -157,14 +259,14 @@ export function ConnectChannelModal({ open, channel, onClose, businessId }: Prop
               {channel.name.charAt(0)}
             </div>
             <h3 className="text-lg font-semibold text-neutral-800 mb-2">
-              Autorizando acesso...
+              Testando credenciais...
             </h3>
             <p className="text-neutral-500 mb-6">
-              Conectando com sua conta {channel.name}
+              Verificando conexão com a API da {channel.name}
             </p>
             <div className="flex items-center justify-center gap-2 text-primary">
               <Loader2 className="w-5 h-5 animate-spin" />
-              <span className="text-sm">Aguardando autorização...</span>
+              <span className="text-sm">Validando...</span>
             </div>
           </div>
         )}
