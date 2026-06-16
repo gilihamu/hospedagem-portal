@@ -11,7 +11,7 @@ export function Skeleton({ width, height, rounded = false, className }: Skeleton
   return (
     <div
       className={cn(
-        'bg-neutral-200 animate-pulse',
+        'bg-neutral-200 bg-gradient-to-r from-neutral-200 via-neutral-100 to-neutral-200 bg-[length:200%_100%] animate-shimmer',
         rounded ? 'rounded-full' : 'rounded-md',
         className
       )}
