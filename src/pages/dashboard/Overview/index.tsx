@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { DollarSign, Calendar, Building2, Star, Plus, BarChart3, Phone, CalendarPlus } from 'lucide-react';
+import { DollarSign, Calendar, Building2, Star, Plus, BarChart3, Phone, Percent, Wallet, TrendingUp, Moon } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useAuthStore } from '../../../store/auth.store';
 import { useAnalyticsSummary, useRevenueData } from '../../../hooks/useAnalytics';
@@ -7,12 +7,14 @@ import { useHostBookings } from '../../../hooks/useBookings';
 import { useOwnerProperties } from '../../../hooks/useProperties';
 import { StatCard } from '../../../components/shared/StatCard';
 import { StatCardSkeleton } from '../../../components/shared/StatCardSkeleton';
-import { BookingStatusBadge } from '../../../components/shared/BookingStatusBadge';
 import { BookingGrid } from '../../../components/dashboard/BookingGrid';
 import { PropertyCalendarCard } from '../../../components/dashboard/PropertyCalendarCard';
+import { TodayStrip } from '../../../components/dashboard/TodayStrip';
+import { TodayMovement } from '../../../components/dashboard/TodayMovement';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { Button } from '../../../components/ui/Button';
-import { formatCurrency, formatDate, formatNumber } from '../../../utils/formatters';
+import { formatCurrency, formatNumber } from '../../../utils/formatters';
+import { getTodayOps, getHotelKpis } from '../../../utils/hotelMetrics';
 import { ROUTES } from '../../../router/routes';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -39,9 +41,17 @@ export function OverviewPage() {
   const { data: properties } = useOwnerProperties(user?.id);
 
   const today = format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR });
-  const recentBookings = bookings?.slice(0, 5) || [];
   const revenueSeries = revenueData?.map((d) => d.revenue);
   const bookingsSeries = revenueData?.map((d) => d.bookings);
+
+  const ops = getTodayOps(bookings);
+  const hotel = getHotelKpis(bookings, summary?.occupancyRate ?? 0);
+  const hotelLoading = summaryLoading || !bookings;
+
+  const ctxParts: string[] = [];
+  if (ops.checkInsToday) ctxParts.push(`${ops.checkInsToday} check-in${ops.checkInsToday !== 1 ? 's' : ''}`);
+  if (ops.checkOutsToday) ctxParts.push(`${ops.checkOutsToday} check-out${ops.checkOutsToday !== 1 ? 's' : ''}`);
+  const greetingCtx = ctxParts.length ? `${ctxParts.join(' e ')} hoje` : null;
 
   return (
     <div className="space-y-6">
@@ -51,7 +61,10 @@ export function OverviewPage() {
           <h1 className="text-2xl font-bold text-neutral-900 tracking-tight">
             Olá, {user?.name.split(' ')[0]}! 👋
           </h1>
-          <p className="text-neutral-500 capitalize">{today}</p>
+          <p className="text-neutral-500">
+            <span className="capitalize">{today}</span>
+            {greetingCtx && <span> · {greetingCtx}</span>}
+          </p>
         </div>
         <div className="flex gap-2">
           <Link to={ROUTES.DASHBOARD_BOOKINGS_NEW}>
@@ -66,13 +79,18 @@ export function OverviewPage() {
         </div>
       </div>
 
-      {/* KPIs */}
+      {/* Faixa operacional do dia */}
+      <div className="animate-slide-up" style={enter(60)}>
+        <TodayStrip ops={ops} loading={!bookings} />
+      </div>
+
+      {/* KPIs de negócio */}
       {summaryLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)}
         </div>
       ) : summary && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 animate-slide-up" style={enter(80)}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 animate-slide-up" style={enter(120)}>
           <StatCard
             icon={DollarSign}
             label="Receita Total"
@@ -108,9 +126,26 @@ export function OverviewPage() {
         </div>
       )}
 
+      {/* KPIs hoteleiros */}
+      <div className="space-y-3 animate-slide-up" style={enter(180)}>
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Desempenho hoteleiro</h2>
+        {hotelLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            <StatCard icon={Percent} label="Taxa de Ocupação" countTo={hotel.occupancy} format={(n) => `${Math.round(n)}%`} iconColor="text-info" />
+            <StatCard icon={Wallet} label="Diária Média (ADR)" countTo={hotel.adr} format={formatCurrency} iconColor="text-primary" />
+            <StatCard icon={TrendingUp} label="RevPAR" countTo={hotel.revpar} format={formatCurrency} iconColor="text-accent" />
+            <StatCard icon={Moon} label="Permanência Média" countTo={hotel.los} format={(n) => `${n.toFixed(1)} noites`} iconColor="text-warning" />
+          </div>
+        )}
+      </div>
+
       {/* Booking Grid — Mapa de Reservas por Propriedade */}
       {properties && properties.length > 0 && bookings && (
-        <div className="animate-slide-up" style={enter(140)}>
+        <div className="animate-slide-up" style={enter(240)}>
           <BookingGrid
             bookings={bookings}
             properties={properties.map(p => ({ id: p.id, name: p.name, pricePerNight: p.pricePerNight }))}
@@ -118,8 +153,8 @@ export function OverviewPage() {
         </div>
       )}
 
-      {/* Charts + Recent Bookings */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 animate-slide-up" style={enter(200)}>
+      {/* Gráfico + Movimentação de hoje */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 animate-slide-up" style={enter(300)}>
         {/* Revenue Chart */}
         <div className="card-base p-5">
           <h2 className="font-semibold text-neutral-800 mb-4 flex items-center gap-2">
@@ -141,43 +176,13 @@ export function OverviewPage() {
           )}
         </div>
 
-        {/* Recent bookings */}
-        <div className="card-base p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-neutral-800">Reservas recentes</h2>
-            <Link to={ROUTES.DASHBOARD_BOOKINGS} className="text-xs text-primary hover:underline">Ver todas</Link>
-          </div>
-          <div className="space-y-3">
-            {recentBookings.length === 0 ? (
-              <div className="flex flex-col items-center justify-center text-center py-8">
-                <div className="w-12 h-12 rounded-2xl bg-neutral-100 flex items-center justify-center mb-3">
-                  <CalendarPlus className="w-6 h-6 text-neutral-400" />
-                </div>
-                <p className="text-sm font-medium text-neutral-700">Nenhuma reserva ainda</p>
-                <p className="text-xs text-neutral-400 mb-3">Crie a primeira para começar a acompanhar</p>
-                <Link to={ROUTES.DASHBOARD_BOOKINGS_NEW}>
-                  <Button size="sm" variant="outline" leftIcon={<Plus className="w-4 h-4" />}>Nova reserva</Button>
-                </Link>
-              </div>
-            ) : recentBookings.map((b) => (
-              <div key={b.id} className="flex items-center justify-between py-2 px-2 -mx-2 rounded-lg border-b border-surface-border last:border-0 transition-colors hover:bg-surface-muted">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-neutral-800 truncate">{b.guestName}</p>
-                  <p className="text-xs text-neutral-400 truncate">{b.propertyName} · {formatDate(b.checkIn)}</p>
-                </div>
-                <div className="flex items-center gap-3 flex-shrink-0 ml-3">
-                  <BookingStatusBadge status={b.status} />
-                  <span className="text-sm font-semibold text-primary tabular-nums hidden sm:block">{formatCurrency(b.totalPrice)}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        {/* Movimentação de hoje */}
+        <TodayMovement ops={ops} />
       </div>
 
       {/* Property Calendars */}
       {properties && properties.length > 0 && (
-        <div className="animate-slide-up" style={enter(260)}>
+        <div className="animate-slide-up" style={enter(360)}>
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold text-neutral-800 flex items-center gap-2">
               <Calendar className="w-4 h-4 text-primary" />
