@@ -7,12 +7,16 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useUIStore } from '../../store/ui.store';
-import { ROUTES } from '../../router/routes';
+import { useAuthStore } from '../../store/auth.store';
+import { useOwnerProperties } from '../../hooks/useProperties';
+import { useHostBookings } from '../../hooks/useBookings';
+import { ROUTES, editPropertyRoute, bookingManageRoute, guestDetailRoute } from '../../router/routes';
 import { cn } from '../../utils/cn';
 
 interface Command {
   id: string;
   label: string;
+  sub?: string;
   group: string;
   icon: LucideIcon;
   path?: string;
@@ -47,6 +51,9 @@ export function CommandPalette() {
   const closeCommand = useUIStore((s) => s.closeCommand);
   const theme = useUIStore((s) => s.theme);
   const toggleTheme = useUIStore((s) => s.toggleTheme);
+  const user = useAuthStore((s) => s.user);
+  const { data: properties } = useOwnerProperties(user?.id);
+  const { data: bookings } = useHostBookings(user?.id);
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
@@ -91,11 +98,35 @@ export function CommandPalette() {
     [theme, toggleTheme]
   );
 
+  const entityResults = useMemo<Command[]>(() => {
+    const q = query.trim().toLowerCase();
+    if (q.length < 2) return [];
+    const out: Command[] = [];
+    (properties ?? [])
+      .filter((p) => p.name.toLowerCase().includes(q))
+      .slice(0, 4)
+      .forEach((p) => out.push({ id: `prop-${p.id}`, label: p.name, sub: 'Propriedade', group: 'Propriedades', icon: Building2, path: editPropertyRoute(p.id) }));
+    (bookings ?? [])
+      .filter((b) => `${b.guestName} ${b.confirmationCode} ${b.propertyName}`.toLowerCase().includes(q))
+      .slice(0, 4)
+      .forEach((b) => out.push({ id: `book-${b.id}`, label: b.guestName, sub: `${b.confirmationCode} · ${b.propertyName}`, group: 'Reservas', icon: CalendarDays, path: bookingManageRoute(b.id) }));
+    const seen = new Set<string>();
+    (bookings ?? [])
+      .filter((b) => b.guestName.toLowerCase().includes(q))
+      .forEach((b) => {
+        if (seen.has(b.guestId) || seen.size >= 4) return;
+        seen.add(b.guestId);
+        out.push({ id: `guest-${b.guestId}`, label: b.guestName, sub: 'Hóspede', group: 'Hóspedes', icon: User, path: guestDetailRoute(b.guestId) });
+      });
+    return out;
+  }, [query, properties, bookings]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return allCommands;
-    return allCommands.filter((c) => `${c.label} ${c.keywords ?? ''}`.toLowerCase().includes(q));
-  }, [query, allCommands]);
+    const matched = allCommands.filter((c) => `${c.label} ${c.keywords ?? ''}`.toLowerCase().includes(q));
+    return [...entityResults, ...matched];
+  }, [query, allCommands, entityResults]);
 
   useEffect(() => { setActive(0); }, [query]);
 
@@ -161,8 +192,11 @@ export function CommandPalette() {
                       )}
                     >
                       <c.icon className={cn('w-4 h-4 flex-shrink-0', isActive ? 'text-primary' : 'text-neutral-400')} />
-                      <span className="flex-1">{c.label}</span>
-                      {isActive && <CornerDownLeft className="w-3.5 h-3.5 text-primary/60" />}
+                      <span className="flex-1 min-w-0">
+                        <span className="block truncate">{c.label}</span>
+                        {c.sub && <span className="block text-xs text-neutral-400 truncate">{c.sub}</span>}
+                      </span>
+                      {isActive && <CornerDownLeft className="w-3.5 h-3.5 text-primary/60 flex-shrink-0" />}
                     </button>
                   </div>
                 );
