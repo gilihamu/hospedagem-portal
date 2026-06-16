@@ -6,6 +6,7 @@ import { getMonthlyOccupancy } from '../../utils/hotelMetrics';
 import { formatCurrency } from '../../utils/formatters';
 import { cn } from '../../utils/cn';
 import { Skeleton } from '../ui/Skeleton';
+import { useUIStore } from '../../store/ui.store';
 import type { Booking } from '../../types';
 
 const PERIODS = [
@@ -41,9 +42,15 @@ interface Props {
 
 export function RevenueOccupancyChart({ hostId, bookings, propertyCount }: Props) {
   const [months, setMonths] = useState(6);
+  const theme = useUIStore((s) => s.theme);
   const { data: revenueData, isLoading } = useRevenueData(hostId, months);
   const occ = getMonthlyOccupancy(bookings, propertyCount, months);
   const data = (revenueData ?? []).map((d, i) => ({ ...d, occupancy: occ[i] ?? 0 }));
+
+  const isDark = theme === 'dark';
+  const revColor = isDark ? '#6D99C7' : '#1E3A5F';
+  const gridColor = isDark ? '#334155' : '#E2E8F0';
+  const axisColor = isDark ? '#94A3B8' : '#64748B';
 
   return (
     <div className="card-base p-5">
@@ -79,24 +86,24 @@ export function RevenueOccupancyChart({ hostId, bookings, propertyCount }: Props
           <ComposedChart data={data} margin={{ top: 4, right: 4, left: -18, bottom: 0 }}>
             <defs>
               <linearGradient id="revFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#1E3A5F" stopOpacity={0.22} />
-                <stop offset="100%" stopColor="#1E3A5F" stopOpacity={0.02} />
+                <stop offset="0%" stopColor={revColor} stopOpacity={0.22} />
+                <stop offset="100%" stopColor={revColor} stopOpacity={0.02} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
-            <XAxis dataKey="month" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
-            <YAxis yAxisId="left" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
-            <YAxis yAxisId="right" orientation="right" domain={[0, 100]} tick={{ fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}%`} />
+            <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
+            <XAxis dataKey="month" tick={{ fontSize: 12, fill: axisColor }} axisLine={false} tickLine={false} />
+            <YAxis yAxisId="left" tick={{ fontSize: 12, fill: axisColor }} axisLine={false} tickLine={false} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
+            <YAxis yAxisId="right" orientation="right" domain={[0, 100]} tick={{ fontSize: 12, fill: axisColor }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}%`} />
             <Tooltip content={<ChartTooltip />} />
-            <Area yAxisId="left" type="monotone" dataKey="revenue" stroke="#1E3A5F" strokeWidth={2} fill="url(#revFill)" />
+            <Area yAxisId="left" type="monotone" dataKey="revenue" stroke={revColor} strokeWidth={2} fill="url(#revFill)" />
             <Line yAxisId="right" type="monotone" dataKey="occupancy" stroke="#D4A017" strokeWidth={2} dot={{ r: 3, fill: '#D4A017' }} />
           </ComposedChart>
         </ResponsiveContainer>
       )}
 
       <div className="mt-2 flex items-center justify-center gap-4 text-xs text-neutral-500">
-        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-primary" />Receita</span>
-        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-accent" />Ocupação</span>
+        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: revColor }} />Receita</span>
+        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: '#D4A017' }} />Ocupação</span>
       </div>
     </div>
   );

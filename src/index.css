@@ -26,3 +26,54 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ── Dark mode (escopo: subárvore do dashboard via .dark) ───────── */
+.dark { color-scheme: dark; }
+
+.dark .card-base { background-color: #1E293B; border-color: #334155; }
+.dark .input-base { background-color: #1E293B; border-color: #334155; color: #F1F5F9; }
+.dark .input-base::placeholder { color: #64748B; }
+
+.dark .bg-white { background-color: #1E293B; }
+.dark .bg-neutral-50 { background-color: #1E293B; }
+.dark .bg-neutral-100 { background-color: #334155; }
+.dark .bg-surface-muted { background-color: #0F172A; }
+.dark .bg-surface-subtle { background-color: #1E293B; }
+
+.dark .border-surface-border { border-color: #334155; }
+.dark .border-neutral-200 { border-color: #334155; }
+
+.dark .text-neutral-900 { color: #F1F5F9; }
+.dark .text-neutral-800 { color: #E2E8F0; }
+.dark .text-neutral-700 { color: #CBD5E1; }
+.dark .text-neutral-600 { color: #94A3B8; }
+.dark .text-neutral-500 { color: #94A3B8; }
+.dark .text-neutral-400 { color: #64748B; }
+.dark .text-primary { color: #6D99C7; }
+
+/* Chips de ícone e badges semânticos: mantém o tom, escurece o fundo */
+.dark .bg-primary\/10 { background-color: rgba(109, 153, 199, 0.15); }
+.dark .bg-accent\/10 { background-color: rgba(212, 160, 23, 0.16); }
+.dark .bg-success-light { background-color: rgba(22, 163, 74, 0.16); }
+.dark .bg-info-light { background-color: rgba(37, 99, 235, 0.16); }
+.dark .bg-warning-light { background-color: rgba(217, 119, 6, 0.18); }
+.dark .text-success-dark { color: #4ADE80; }
+.dark .text-info-dark { color: #93C5FD; }
+.dark .text-warning-dark { color: #FCD34D; }
+
+/* Hovers */
+.dark .hover\:bg-surface-muted:hover,
+.dark .hover\:bg-neutral-100:hover,
+.dark .hover\:bg-neutral-200:hover { background-color: #334155; }
+.dark .hover\:bg-primary\/5:hover { background-color: rgba(148, 163, 184, 0.08); }
+
+/* Skeleton shimmer no escuro */
+.dark .animate-shimmer { background-image: linear-gradient(90deg, #334155, #475569, #334155); }
+
+/* ── Densidade compacta (escopo: subárvore do dashboard) ───────── */
+.density-compact main { padding: 0.75rem; }
+@media (min-width: 640px) { .density-compact main { padding: 1.25rem; } }
+.density-compact .space-y-6 > :not([hidden]) ~ :not([hidden]) { margin-top: 1rem; }
+.density-compact .gap-6 { gap: 1rem; }
+.density-compact .gap-4 { gap: 0.75rem; }
+.density-compact .p-5 { padding: 0.875rem; }

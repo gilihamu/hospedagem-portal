@@ -1,9 +1,12 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, Bell, ExternalLink, ChevronRight } from 'lucide-react';
+import { Menu, Search, ExternalLink, ChevronRight, Sun, Moon } from 'lucide-react';
 import { useAuthStore } from '../../store/auth.store';
 import { useUIStore } from '../../store/ui.store';
 import { Avatar } from '../ui/Avatar';
+import { NotificationCenter } from './NotificationCenter';
 import { ROUTES } from '../../router/routes';
+
+const isMac = typeof navigator !== 'undefined' && /Mac|iP/.test(navigator.platform);
 
 const routeLabels: Record<string, string> = {
   '/dashboard': 'Visão Geral',
@@ -34,7 +37,7 @@ const routeLabels: Record<string, string> = {
 
 export function DashboardTopBar() {
   const { user } = useAuthStore();
-  const { toggleSidebar } = useUIStore();
+  const { toggleSidebar, openCommand, theme, toggleTheme } = useUIStore();
   const location = useLocation();
 
   const pageTitle = routeLabels[location.pathname] || 'Painel';
@@ -77,6 +80,16 @@ export function DashboardTopBar() {
 
       {/* Right actions */}
       <div className="flex items-center gap-2">
+        <button
+          onClick={openCommand}
+          className="flex items-center gap-2 text-xs text-neutral-400 rounded-lg p-2 sm:border sm:border-surface-border sm:px-3 sm:py-1.5 hover:text-neutral-600 sm:hover:border-surface-border-dark transition-colors"
+          aria-label="Buscar (atalho de teclado)"
+        >
+          <Search className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+          <span className="hidden sm:inline">Buscar...</span>
+          <kbd className="hidden sm:inline text-[10px] border border-surface-border rounded px-1 py-0.5 ml-1 tabular-nums">{isMac ? '⌘' : 'Ctrl'} K</kbd>
+        </button>
+
         <Link
           to={ROUTES.HOME}
           className="hidden sm:flex items-center gap-1.5 text-xs text-neutral-500 hover:text-primary transition-colors px-3 py-1.5 rounded-lg hover:bg-primary/5"
@@ -85,12 +98,15 @@ export function DashboardTopBar() {
           Ver portal
         </Link>
 
-        <Link
-          to={ROUTES.MESSAGES}
+        <button
+          onClick={toggleTheme}
           className="p-2 rounded-lg text-neutral-500 hover:text-primary hover:bg-primary/5 transition-colors"
+          aria-label={theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
         >
-          <Bell className="w-5 h-5" />
-        </Link>
+          {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+        </button>
+
+        <NotificationCenter />
 
         {user && (
           <Link to={ROUTES.DASHBOARD_PROFILE}>

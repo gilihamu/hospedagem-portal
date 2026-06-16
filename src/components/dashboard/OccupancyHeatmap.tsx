@@ -2,15 +2,10 @@ import { CalendarDays } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getCurrentMonthOccupancy } from '../../utils/hotelMetrics';
+import { useUIStore } from '../../store/ui.store';
 import type { Booking } from '../../types';
 
 const WEEKDAYS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
-
-/** Navy (#1E3A5F) com opacidade proporcional à ocupação. */
-function cellColor(occ: number): string {
-  if (occ <= 0) return '#F1F5F9';
-  return `rgba(30,58,95,${(0.15 + (occ / 100) * 0.8).toFixed(2)})`;
-}
 
 interface Props {
   bookings?: Booking[];
@@ -18,8 +13,17 @@ interface Props {
 }
 
 export function OccupancyHeatmap({ bookings, propertyCount }: Props) {
+  const theme = useUIStore((s) => s.theme);
   const days = getCurrentMonthOccupancy(bookings, propertyCount);
   if (!days.length) return null;
+
+  /** Cor da célula com opacidade proporcional à ocupação (sensível ao tema). */
+  const cellColor = (occ: number): string => {
+    if (theme === 'dark') {
+      return occ <= 0 ? '#334155' : `rgba(109,153,199,${(0.2 + (occ / 100) * 0.8).toFixed(2)})`;
+    }
+    return occ <= 0 ? '#F1F5F9' : `rgba(30,58,95,${(0.15 + (occ / 100) * 0.8).toFixed(2)})`;
+  };
 
   const monthLabel = format(days[0].date, 'MMMM', { locale: ptBR });
   const lead = days[0].date.getDay();
@@ -45,7 +49,7 @@ export function OccupancyHeatmap({ bookings, propertyCount }: Props) {
             key={d.date.toISOString()}
             title={`${format(d.date, 'dd/MM')} · ${d.occupancy}% de ocupação`}
             className="aspect-square rounded-md flex items-center justify-center text-[10px] font-medium tabular-nums"
-            style={{ backgroundColor: cellColor(d.occupancy), color: d.occupancy > 55 ? '#fff' : '#64748B' }}
+            style={{ backgroundColor: cellColor(d.occupancy), color: d.occupancy > 55 ? '#fff' : theme === 'dark' ? '#94A3B8' : '#64748B' }}
           >
             {d.date.getDate()}
           </div>
