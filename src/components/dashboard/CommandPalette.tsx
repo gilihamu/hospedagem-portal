@@ -3,7 +3,7 @@ import { useNavigate, type NavigateFunction } from 'react-router-dom';
 import {
   LayoutDashboard, CalendarDays, Calendar, Building2, GitBranch, BarChart3,
   Radio, CreditCard, Wallet, BookOpen, User, MessageSquare, Plus, Phone,
-  ExternalLink, Search, CornerDownLeft, Sun, Moon,
+  ExternalLink, Search, CornerDownLeft, Sun, Moon, Rows3,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useUIStore } from '../../store/ui.store';
@@ -51,6 +51,8 @@ export function CommandPalette() {
   const closeCommand = useUIStore((s) => s.closeCommand);
   const theme = useUIStore((s) => s.theme);
   const toggleTheme = useUIStore((s) => s.toggleTheme);
+  const density = useUIStore((s) => s.density);
+  const toggleDensity = useUIStore((s) => s.toggleDensity);
   const user = useAuthStore((s) => s.user);
   const { data: properties } = useOwnerProperties(user?.id);
   const { data: bookings } = useHostBookings(user?.id);
@@ -94,8 +96,16 @@ export function CommandPalette() {
         action: toggleTheme,
         keywords: 'dark mode escuro claro tema aparência',
       },
+      {
+        id: 'density',
+        label: density === 'compact' ? 'Densidade confortável' : 'Densidade compacta',
+        group: 'Preferências',
+        icon: Rows3,
+        action: toggleDensity,
+        keywords: 'densidade compacto confortável espaçamento layout',
+      },
     ],
-    [theme, toggleTheme]
+    [theme, toggleTheme, density, toggleDensity]
   );
 
   const entityResults = useMemo<Command[]>(() => {

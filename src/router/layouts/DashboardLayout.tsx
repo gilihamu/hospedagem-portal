@@ -7,8 +7,9 @@ import { cn } from '../../utils/cn';
 
 export function DashboardLayout() {
   const theme = useUIStore((s) => s.theme);
+  const density = useUIStore((s) => s.density);
   return (
-    <div className={cn(theme === 'dark' && 'dark')}>
+    <div className={cn(theme === 'dark' && 'dark', density === 'compact' && 'density-compact')}>
       <div className="flex h-screen bg-surface-muted dark:bg-neutral-900 overflow-hidden">
         <DashboardSidebar />
         <div className="flex-1 flex flex-col min-w-0">

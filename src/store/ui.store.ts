@@ -2,9 +2,13 @@ import { create } from 'zustand';
 import type { ToastItem } from '../types';
 
 type Theme = 'light' | 'dark';
+type Density = 'comfortable' | 'compact';
 
 const initialTheme: Theme =
   typeof localStorage !== 'undefined' && localStorage.getItem('hbs_theme') === 'dark' ? 'dark' : 'light';
+
+const initialDensity: Density =
+  typeof localStorage !== 'undefined' && localStorage.getItem('hbs_density') === 'compact' ? 'compact' : 'comfortable';
 
 interface UIState {
   toasts: ToastItem[];
@@ -12,6 +16,7 @@ interface UIState {
   isSidebarOpen: boolean;
   commandOpen: boolean;
   theme: Theme;
+  density: Density;
 }
 
 interface UIActions {
@@ -24,6 +29,7 @@ interface UIActions {
   openCommand: () => void;
   closeCommand: () => void;
   toggleTheme: () => void;
+  toggleDensity: () => void;
 }
 
 export const useUIStore = create<UIState & UIActions>((set) => ({
@@ -32,6 +38,7 @@ export const useUIStore = create<UIState & UIActions>((set) => ({
   isSidebarOpen: false,
   commandOpen: false,
   theme: initialTheme,
+  density: initialDensity,
 
   addToast: (toast) => {
     const id = `toast_${Date.now()}_${Math.random()}`;
@@ -56,5 +63,12 @@ export const useUIStore = create<UIState & UIActions>((set) => ({
       const theme: Theme = state.theme === 'dark' ? 'light' : 'dark';
       if (typeof localStorage !== 'undefined') localStorage.setItem('hbs_theme', theme);
       return { theme };
+    }),
+
+  toggleDensity: () =>
+    set((state) => {
+      const density: Density = state.density === 'compact' ? 'comfortable' : 'compact';
+      if (typeof localStorage !== 'undefined') localStorage.setItem('hbs_density', density);
+      return { density };
     }),
 }));
