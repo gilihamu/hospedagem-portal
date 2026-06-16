@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, Search, ExternalLink, ChevronRight } from 'lucide-react';
+import { Menu, Search, ExternalLink, ChevronRight, Sun, Moon } from 'lucide-react';
 import { useAuthStore } from '../../store/auth.store';
 import { useUIStore } from '../../store/ui.store';
 import { Avatar } from '../ui/Avatar';
@@ -37,7 +37,7 @@ const routeLabels: Record<string, string> = {
 
 export function DashboardTopBar() {
   const { user } = useAuthStore();
-  const { toggleSidebar, openCommand } = useUIStore();
+  const { toggleSidebar, openCommand, theme, toggleTheme } = useUIStore();
   const location = useLocation();
 
   const pageTitle = routeLabels[location.pathname] || 'Painel';
@@ -97,6 +97,14 @@ export function DashboardTopBar() {
           <ExternalLink className="w-3.5 h-3.5" />
           Ver portal
         </Link>
+
+        <button
+          onClick={toggleTheme}
+          className="p-2 rounded-lg text-neutral-500 hover:text-primary hover:bg-primary/5 transition-colors"
+          aria-label={theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
+        >
+          {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+        </button>
 
         <NotificationCenter />
 

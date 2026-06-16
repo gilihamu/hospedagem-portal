@@ -3,7 +3,7 @@ import { useNavigate, type NavigateFunction } from 'react-router-dom';
 import {
   LayoutDashboard, CalendarDays, Calendar, Building2, GitBranch, BarChart3,
   Radio, CreditCard, Wallet, BookOpen, User, MessageSquare, Plus, Phone,
-  ExternalLink, Search, CornerDownLeft,
+  ExternalLink, Search, CornerDownLeft, Sun, Moon,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useUIStore } from '../../store/ui.store';
@@ -15,7 +15,8 @@ interface Command {
   label: string;
   group: string;
   icon: LucideIcon;
-  path: string;
+  path?: string;
+  action?: () => void;
   keywords?: string;
 }
 
@@ -44,6 +45,8 @@ export function CommandPalette() {
   const commandOpen = useUIStore((s) => s.commandOpen);
   const openCommand = useUIStore((s) => s.openCommand);
   const closeCommand = useUIStore((s) => s.closeCommand);
+  const theme = useUIStore((s) => s.theme);
+  const toggleTheme = useUIStore((s) => s.toggleTheme);
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
@@ -73,11 +76,26 @@ export function CommandPalette() {
     }
   }, [commandOpen]);
 
+  const allCommands = useMemo<Command[]>(
+    () => [
+      ...COMMANDS,
+      {
+        id: 'theme',
+        label: theme === 'dark' ? 'Tema claro' : 'Tema escuro',
+        group: 'Preferências',
+        icon: theme === 'dark' ? Sun : Moon,
+        action: toggleTheme,
+        keywords: 'dark mode escuro claro tema aparência',
+      },
+    ],
+    [theme, toggleTheme]
+  );
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return COMMANDS;
-    return COMMANDS.filter((c) => `${c.label} ${c.keywords ?? ''}`.toLowerCase().includes(q));
-  }, [query]);
+    if (!q) return allCommands;
+    return allCommands.filter((c) => `${c.label} ${c.keywords ?? ''}`.toLowerCase().includes(q));
+  }, [query, allCommands]);
 
   useEffect(() => { setActive(0); }, [query]);
 
@@ -86,7 +104,8 @@ export function CommandPalette() {
   const run = (c?: Command) => {
     if (!c) return;
     closeCommand();
-    (navigate as NavigateFunction)(c.path);
+    if (c.action) c.action();
+    else if (c.path) (navigate as NavigateFunction)(c.path);
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {

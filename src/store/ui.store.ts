@@ -1,11 +1,17 @@
 import { create } from 'zustand';
 import type { ToastItem } from '../types';
 
+type Theme = 'light' | 'dark';
+
+const initialTheme: Theme =
+  typeof localStorage !== 'undefined' && localStorage.getItem('hbs_theme') === 'dark' ? 'dark' : 'light';
+
 interface UIState {
   toasts: ToastItem[];
   modalOpen: boolean;
   isSidebarOpen: boolean;
   commandOpen: boolean;
+  theme: Theme;
 }
 
 interface UIActions {
@@ -17,6 +23,7 @@ interface UIActions {
   setSidebarOpen: (open: boolean) => void;
   openCommand: () => void;
   closeCommand: () => void;
+  toggleTheme: () => void;
 }
 
 export const useUIStore = create<UIState & UIActions>((set) => ({
@@ -24,6 +31,7 @@ export const useUIStore = create<UIState & UIActions>((set) => ({
   modalOpen: false,
   isSidebarOpen: false,
   commandOpen: false,
+  theme: initialTheme,
 
   addToast: (toast) => {
     const id = `toast_${Date.now()}_${Math.random()}`;
@@ -42,4 +50,11 @@ export const useUIStore = create<UIState & UIActions>((set) => ({
 
   openCommand: () => set({ commandOpen: true }),
   closeCommand: () => set({ commandOpen: false }),
+
+  toggleTheme: () =>
+    set((state) => {
+      const theme: Theme = state.theme === 'dark' ? 'light' : 'dark';
+      if (typeof localStorage !== 'undefined') localStorage.setItem('hbs_theme', theme);
+      return { theme };
+    }),
 }));
