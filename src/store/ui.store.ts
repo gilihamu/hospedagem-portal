@@ -5,6 +5,7 @@ interface UIState {
   toasts: ToastItem[];
   modalOpen: boolean;
   isSidebarOpen: boolean;
+  commandOpen: boolean;
 }
 
 interface UIActions {
@@ -14,12 +15,15 @@ interface UIActions {
   closeModal: () => void;
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
+  openCommand: () => void;
+  closeCommand: () => void;
 }
 
 export const useUIStore = create<UIState & UIActions>((set) => ({
   toasts: [],
   modalOpen: false,
   isSidebarOpen: false,
+  commandOpen: false,
 
   addToast: (toast) => {
     const id = `toast_${Date.now()}_${Math.random()}`;
@@ -35,4 +39,7 @@ export const useUIStore = create<UIState & UIActions>((set) => ({
 
   toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
   setSidebarOpen: (open) => set({ isSidebarOpen: open }),
+
+  openCommand: () => set({ commandOpen: true }),
+  closeCommand: () => set({ commandOpen: false }),
 }));

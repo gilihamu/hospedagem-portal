@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom';
 import { DashboardSidebar } from '../../components/layout/DashboardSidebar';
 import { DashboardTopBar } from '../../components/layout/DashboardTopBar';
+import { CommandPalette } from '../../components/dashboard/CommandPalette';
 
 export function DashboardLayout() {
   return (
@@ -12,6 +13,7 @@ export function DashboardLayout() {
           <Outlet />
         </main>
       </div>
+      <CommandPalette />
     </div>
   );
 }
