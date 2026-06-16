@@ -12,3 +12,17 @@
   .card-base { @apply bg-white rounded-xl shadow-card border border-surface-border; }
   .input-base { @apply w-full rounded-lg border border-surface-border bg-white px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 transition-all focus:ring-2 focus:ring-primary/20 focus:border-primary; }
 }
+
+/* Acessibilidade: respeita quem prefere menos movimento. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-shimmer,
+  .animate-slide-up,
+  .animate-slide-down,
+  .animate-fade-in,
+  .animate-scale-in {
+    animation: none !important;
+  }
+  * {
+    transition-duration: 0.01ms !important;
+  }
+}
