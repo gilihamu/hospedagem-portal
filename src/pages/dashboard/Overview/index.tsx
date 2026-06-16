@@ -1,8 +1,7 @@
 import { Link } from 'react-router-dom';
-import { DollarSign, Calendar, Building2, Star, Plus, BarChart3, Phone, Percent, Wallet, TrendingUp, Moon } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { DollarSign, Calendar, Building2, Star, Plus, Phone, Percent, Wallet, TrendingUp, Moon } from 'lucide-react';
 import { useAuthStore } from '../../../store/auth.store';
-import { useAnalyticsSummary, useRevenueData } from '../../../hooks/useAnalytics';
+import { useAnalyticsSummary, useRevenueData, useBookingsByChannel } from '../../../hooks/useAnalytics';
 import { useHostBookings } from '../../../hooks/useBookings';
 import { useOwnerProperties } from '../../../hooks/useProperties';
 import { StatCard } from '../../../components/shared/StatCard';
@@ -11,41 +10,36 @@ import { BookingGrid } from '../../../components/dashboard/BookingGrid';
 import { PropertyCalendarCard } from '../../../components/dashboard/PropertyCalendarCard';
 import { TodayStrip } from '../../../components/dashboard/TodayStrip';
 import { TodayMovement } from '../../../components/dashboard/TodayMovement';
-import { Skeleton } from '../../../components/ui/Skeleton';
+import { RevenueOccupancyChart } from '../../../components/dashboard/RevenueOccupancyChart';
+import { ChannelMixCard } from '../../../components/dashboard/ChannelMixCard';
+import { OccupancyHeatmap } from '../../../components/dashboard/OccupancyHeatmap';
+import { InsightCallouts } from '../../../components/dashboard/InsightCallouts';
 import { Button } from '../../../components/ui/Button';
 import { formatCurrency, formatNumber } from '../../../utils/formatters';
-import { getTodayOps, getHotelKpis } from '../../../utils/hotelMetrics';
+import { getTodayOps, getHotelKpis, getInsights } from '../../../utils/hotelMetrics';
 import { ROUTES } from '../../../router/routes';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 const enter = (ms: number) => ({ animationDelay: `${ms}ms`, animationFillMode: 'backwards' as const });
 
-function RevenueChartSkeleton() {
-  const bars = [55, 72, 48, 84, 63, 92];
-  return (
-    <div className="flex items-end justify-between gap-3 h-[220px] px-2 pt-4">
-      {bars.map((h, i) => (
-        <Skeleton key={i} width="100%" height={`${h}%`} className="rounded-t-md rounded-b-none" />
-      ))}
-    </div>
-  );
-}
-
 export function OverviewPage() {
   const { user } = useAuthStore();
   const hostId = user?.role === 'host' ? user.id : undefined;
   const { data: summary, isLoading: summaryLoading } = useAnalyticsSummary(hostId);
-  const { data: revenueData, isLoading: revenueLoading } = useRevenueData(hostId, 6);
+  const { data: revenueData } = useRevenueData(hostId, 6);
+  const { data: channelData } = useBookingsByChannel(hostId);
   const { data: bookings } = useHostBookings(user?.id);
   const { data: properties } = useOwnerProperties(user?.id);
 
   const today = format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR });
   const revenueSeries = revenueData?.map((d) => d.revenue);
   const bookingsSeries = revenueData?.map((d) => d.bookings);
+  const propertyCount = properties?.length ?? 0;
 
   const ops = getTodayOps(bookings);
   const hotel = getHotelKpis(bookings, summary?.occupancyRate ?? 0);
+  const insights = getInsights(revenueData, channelData);
   const hotelLoading = summaryLoading || !bookings;
 
   const ctxParts: string[] = [];
@@ -143,9 +137,16 @@ export function OverviewPage() {
         )}
       </div>
 
+      {/* Insights automáticos */}
+      {insights.length > 0 && (
+        <div className="animate-slide-up" style={enter(220)}>
+          <InsightCallouts insights={insights} />
+        </div>
+      )}
+
       {/* Booking Grid — Mapa de Reservas por Propriedade */}
       {properties && properties.length > 0 && bookings && (
-        <div className="animate-slide-up" style={enter(240)}>
+        <div className="animate-slide-up" style={enter(260)}>
           <BookingGrid
             bookings={bookings}
             properties={properties.map(p => ({ id: p.id, name: p.name, pricePerNight: p.pricePerNight }))}
@@ -153,36 +154,21 @@ export function OverviewPage() {
         </div>
       )}
 
-      {/* Gráfico + Movimentação de hoje */}
+      {/* Gráfico Ocupação × Receita + Movimentação de hoje */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 animate-slide-up" style={enter(300)}>
-        {/* Revenue Chart */}
-        <div className="card-base p-5">
-          <h2 className="font-semibold text-neutral-800 mb-4 flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-primary" />
-            Receita dos últimos 6 meses
-          </h2>
-          {revenueLoading ? (
-            <RevenueChartSkeleton />
-          ) : revenueData && (
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={revenueData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-                <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `R$${(v/1000).toFixed(0)}k`} />
-                <Tooltip formatter={(v) => [formatCurrency(typeof v === 'number' ? v : 0), 'Receita']} />
-                <Bar dataKey="revenue" fill="#1E3A5F" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-
-        {/* Movimentação de hoje */}
+        <RevenueOccupancyChart hostId={hostId} bookings={bookings} propertyCount={propertyCount} />
         <TodayMovement ops={ops} />
+      </div>
+
+      {/* Mix de canais + Heatmap de ocupação */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 animate-slide-up" style={enter(340)}>
+        <ChannelMixCard hostId={hostId} />
+        <OccupancyHeatmap bookings={bookings} propertyCount={propertyCount} />
       </div>
 
       {/* Property Calendars */}
       {properties && properties.length > 0 && (
-        <div className="animate-slide-up" style={enter(360)}>
+        <div className="animate-slide-up" style={enter(380)}>
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold text-neutral-800 flex items-center gap-2">
               <Calendar className="w-4 h-4 text-primary" />
