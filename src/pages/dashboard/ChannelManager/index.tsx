@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link2, Plus, RefreshCw, Settings, History, AlertCircle, CheckCircle2, Trash2, Download, Calendar, Shield, Building2, Activity } from 'lucide-react';
+import { Link2, Plus, RefreshCw, Settings, History, AlertCircle, CheckCircle2, Trash2, Download, Calendar, CalendarRange, Shield, Building2, Activity } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
 import { Spinner } from '../../../components/ui/Spinner';
@@ -13,11 +13,12 @@ import { CredentialsPanel } from './CredentialsPanel';
 import { PropertyMappingsPanel } from './PropertyMappingsPanel';
 import { ReservationsFeed } from './ReservationsFeed';
 import { SyncDashboard } from './SyncDashboard';
+import { IcalSyncPanel } from './IcalSyncPanel';
 import type { ChannelConnection, Channel } from '../../../types';
 
 const BUSINESS_ID = 'biz1'; // Demo business
 
-type Tab = 'connections' | 'credentials' | 'properties' | 'reservations' | 'sync';
+type Tab = 'connections' | 'credentials' | 'properties' | 'reservations' | 'sync' | 'ical';
 
 export function ChannelManagerPage() {
   const { data: channels, isLoading: channelsLoading } = useChannels();
@@ -89,6 +90,7 @@ export function ChannelManagerPage() {
     { id: 'credentials', label: 'Credenciais', icon: <Shield className="w-4 h-4" /> },
     { id: 'properties', label: 'Propriedades', icon: <Building2 className="w-4 h-4" /> },
     { id: 'reservations', label: 'Reservas', icon: <Calendar className="w-4 h-4" /> },
+    { id: 'ical', label: 'Calendário', icon: <CalendarRange className="w-4 h-4" /> },
     { id: 'sync', label: 'Sync & Logs', icon: <Activity className="w-4 h-4" /> },
   ];
 
@@ -237,6 +239,7 @@ export function ChannelManagerPage() {
       )}
 
       {activeTab === 'credentials' && <CredentialsPanel />}
+      {activeTab === 'ical' && <IcalSyncPanel />}
       {activeTab === 'properties' && <PropertyMappingsPanel />}
       {activeTab === 'reservations' && <ReservationsFeed propertyChannelId={selectedPropertyChannelId} />}
       {activeTab === 'sync' && <SyncDashboard propertyChannelId={selectedPropertyChannelId} hotelCode={selectedHotelCode} />}

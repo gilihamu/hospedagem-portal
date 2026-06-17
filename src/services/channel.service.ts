@@ -5,6 +5,7 @@ import { getItem, setItem } from '../utils/storage';
 
 const CONN_KEY = 'hbs_channel_connections';
 const LOGS_KEY = 'hbs_channel_import_logs';
+const ICAL_KEY = 'hbs_channel_ical';
 const USE_API = !!import.meta.env.VITE_API_URL;
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -335,5 +336,35 @@ export const channelService = {
       } catch { /* fallback */ }
     }
     return loadLogs().filter((l) => l.connectionId === connectionId);
+  },
+
+  // ── iCal (Airbnb) ─────────────────────────────────────────────────────────
+  async getIcalConfig(propertyId: string): Promise<{ importUrl: string; exportUrl: string }> {
+    if (USE_API) {
+      try {
+        const [cfg, exp] = await Promise.all([
+          api.get<{ icalImportUrl?: string }>(`/channels/ical-config/${propertyId}`),
+          api.get<{ path: string }>(`/bookings/ical/${propertyId}/url`),
+        ]);
+        return { importUrl: cfg.icalImportUrl ?? '', exportUrl: exp.path };
+      } catch { /* fallback */ }
+    }
+    const map = getItem<Record<string, string>>(ICAL_KEY) || {};
+    return {
+      importUrl: map[propertyId] ?? '',
+      exportUrl: `/api/bookings/ical/${propertyId}.ics?token=demo-${propertyId.slice(0, 8)}`,
+    };
+  },
+
+  async setIcalImportUrl(propertyId: string, importUrl: string): Promise<void> {
+    if (USE_API) {
+      try {
+        await api.put(`/channels/ical-config/${propertyId}`, { icalImportUrl: importUrl });
+        return;
+      } catch { /* fallback */ }
+    }
+    const map = getItem<Record<string, string>>(ICAL_KEY) || {};
+    map[propertyId] = importUrl;
+    setItem(ICAL_KEY, map);
   },
 };
