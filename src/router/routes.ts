@@ -26,6 +26,7 @@ export const ROUTES = {
   DASHBOARD_ANALYTICS: '/dashboard/analytics',
   DASHBOARD_PAYMENTS: '/dashboard/payments',
   DASHBOARD_PROFILE: '/dashboard/profile',
+  DASHBOARD_HELP: '/dashboard/ajuda',
   ADMIN: '/admin',
   ADMIN_USERS: '/admin/users',
   ADMIN_PROPERTIES: '/admin/properties',

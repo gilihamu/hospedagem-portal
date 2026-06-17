@@ -69,6 +69,9 @@ const AdminAuditLogs = lazy(() => import('../pages/admin/AuditLogs').then(m => (
 const AdminMetrics = lazy(() => import('../pages/admin/Metrics').then(m => ({ default: m.AdminMetricsPage })));
 const AdminEmailSettings = lazy(() => import('../pages/admin/EmailSettings').then(m => ({ default: m.AdminEmailSettingsPage })));
 
+// Dashboard Help
+const DashboardHelp = lazy(() => import('../pages/dashboard/Help').then(m => ({ default: m.HelpPage })));
+
 // Verify Email
 const VerifyEmail = lazy(() => import('../pages/auth/VerifyEmail').then(m => ({ default: m.VerifyEmailPage })));
 
@@ -206,6 +209,7 @@ export const router = createBrowserRouter([
               { path: ROUTES.DASHBOARD_FINANCE_EXPENSES, element: withSuspense(DashboardFinanceExpenses) },
               { path: ROUTES.DASHBOARD_FINANCE_CASHFLOW, element: withSuspense(DashboardFinanceCashFlow) },
               { path: ROUTES.DASHBOARD_FINANCE_REPORTS, element: withSuspense(DashboardFinanceReports) },
+              { path: ROUTES.DASHBOARD_HELP, element: withSuspense(DashboardHelp) },
             ],
           },
         ],

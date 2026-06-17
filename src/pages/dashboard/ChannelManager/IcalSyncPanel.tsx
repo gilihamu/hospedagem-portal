@@ -1,12 +1,14 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowDownToLine, ArrowUpFromLine, Copy, Check, Info } from 'lucide-react';
+import { ArrowDownToLine, ArrowUpFromLine, Copy, Check, Info, ArrowRight } from 'lucide-react';
 import { useAuthStore } from '../../../store/auth.store';
 import { useOwnerProperties } from '../../../hooks/useProperties';
 import { channelService } from '../../../services/channel.service';
 import { Button } from '../../../components/ui/Button';
 import { Spinner } from '../../../components/ui/Spinner';
 import { useToast } from '../../../hooks/useToast';
+import { ROUTES } from '../../../router/routes';
 
 function PropertyIcalRow({ propertyId, propertyName }: { propertyId: string; propertyName: string }) {
   const queryClient = useQueryClient();
@@ -101,10 +103,15 @@ export function IcalSyncPanel() {
     <div className="space-y-4">
       <div className="flex items-start gap-2 p-3 bg-info-light text-info-dark rounded-lg text-sm">
         <Info className="w-4 h-4 shrink-0 mt-0.5" />
-        <span>
-          Sincronização por calendário (iCal): funciona sem aprovação da Airbnb e troca apenas as
-          datas ocupadas (sem preços nem dados do hóspede). A importação roda a cada ~15 minutos.
-        </span>
+        <div>
+          <p>
+            Sincronização por calendário (iCal): funciona sem aprovação da Airbnb e troca apenas as
+            datas ocupadas (sem preços nem dados do hóspede). A importação roda a cada ~15 minutos.
+          </p>
+          <Link to={ROUTES.DASHBOARD_HELP} className="inline-flex items-center gap-1 mt-1 font-medium underline hover:no-underline">
+            Ver guia passo a passo <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {properties.map((p) => (
