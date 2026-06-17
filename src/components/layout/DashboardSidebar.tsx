@@ -23,6 +23,7 @@ import {
   ArrowDownUp,
   FileText,
   FileSpreadsheet,
+  HelpCircle,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/auth.store';
 import { useUIStore } from '../../store/ui.store';
@@ -80,6 +81,7 @@ const navItems: NavItem[] = [
   { label: 'Analytics',   icon: BarChart3,       href: ROUTES.DASHBOARD_ANALYTICS },
   { label: 'Mensagens',   icon: MessageSquare,   href: ROUTES.MESSAGES },
   { label: 'Perfil',      icon: User,            href: ROUTES.DASHBOARD_PROFILE },
+  { label: 'Ajuda',       icon: HelpCircle,      href: ROUTES.DASHBOARD_HELP },
 ];
 
 // ── Component ────────────────────────────────────────────────────────────────
