@@ -10,6 +10,21 @@ import { Spinner } from '../../../components/ui/Spinner';
 import { useToast } from '../../../hooks/useToast';
 import { ROUTES } from '../../../router/routes';
 
+const IMPORT_CHANNELS = [
+  {
+    code: 'AIRBNB',
+    label: 'Airbnb',
+    placeholder: 'https://www.airbnb.com/calendar/ical/...ics',
+    hint: 'Cole o link "Exportar calendário" do seu anúncio na Airbnb.',
+  },
+  {
+    code: 'BOOKING_COM',
+    label: 'Booking.com',
+    placeholder: 'https://ical.booking.com/v1/export?...',
+    hint: 'No Extranet do Booking.com: Tarifas & Disponibilidade → "Sincronizar calendários" → copie o link de exportação.',
+  },
+] as const;
+
 function PropertyIcalRow({ propertyId, propertyName }: { propertyId: string; propertyName: string }) {
   const queryClient = useQueryClient();
   const { success } = useToast();
@@ -18,16 +33,15 @@ function PropertyIcalRow({ propertyId, propertyName }: { propertyId: string; pro
     queryFn: () => channelService.getIcalConfig(propertyId),
   });
 
-  const [draft, setDraft] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [copied, setCopied] = useState(false);
-  const importUrl = draft ?? data?.importUrl ?? '';
   const exportUrl = data ? `${window.location.origin}${data.exportUrl}` : '';
 
   const save = useMutation({
-    mutationFn: (value: string) => channelService.setIcalImportUrl(propertyId, value),
+    mutationFn: ({ channel, value }: { channel: string; value: string }) =>
+      channelService.setIcalImportUrl(propertyId, channel, value),
     onSuccess: () => {
       success('URL de importação salva');
-      setDraft(null);
       queryClient.invalidateQueries({ queryKey: ['ical-config', propertyId] });
     },
   });
@@ -47,30 +61,42 @@ function PropertyIcalRow({ propertyId, propertyName }: { propertyId: string; pro
         <div className="py-4 flex justify-center"><Spinner /></div>
       ) : (
         <>
-          <div>
-            <label className="flex items-center gap-1.5 text-sm font-medium text-neutral-700 mb-1">
-              <ArrowDownToLine className="w-4 h-4 text-info" /> Importar da Airbnb
-            </label>
-            <p className="text-xs text-neutral-400 mb-2">
-              Cole o link "Exportar calendário" do seu anúncio na Airbnb — as datas ocupadas lá bloqueiam aqui.
-            </p>
-            <div className="flex gap-2">
-              <input
-                className="input-base flex-1"
-                placeholder="https://www.airbnb.com/calendar/ical/...ics"
-                value={importUrl}
-                onChange={(e) => setDraft(e.target.value)}
-              />
-              <Button size="sm" onClick={() => save.mutate(importUrl)} loading={save.isPending}>Salvar</Button>
-            </div>
-          </div>
+          {IMPORT_CHANNELS.map((ch) => {
+            const value = drafts[ch.code] ?? data?.imports?.[ch.code] ?? '';
+            return (
+              <div key={ch.code}>
+                <label className="flex items-center gap-1.5 text-sm font-medium text-neutral-700 mb-1">
+                  <ArrowDownToLine className="w-4 h-4 text-info" /> Importar do {ch.label}
+                </label>
+                <p className="text-xs text-neutral-400 mb-2">
+                  {ch.hint} As datas ocupadas lá bloqueiam aqui.
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    className="input-base flex-1"
+                    placeholder={ch.placeholder}
+                    value={value}
+                    onChange={(e) => setDrafts((d) => ({ ...d, [ch.code]: e.target.value }))}
+                  />
+                  <Button
+                    size="sm"
+                    onClick={() => save.mutate({ channel: ch.code, value })}
+                    loading={save.isPending && save.variables?.channel === ch.code}
+                  >
+                    Salvar
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
 
-          <div>
-            <label className="flex items-center gap-1.5 text-sm font-medium text-neutral-700 mb-1">
-              <ArrowUpFromLine className="w-4 h-4 text-success" /> Exportar para a Airbnb
+          <div className="pt-1 border-t border-neutral-100">
+            <label className="flex items-center gap-1.5 text-sm font-medium text-neutral-700 mb-1 mt-3">
+              <ArrowUpFromLine className="w-4 h-4 text-success" /> Exportar para as OTAs
             </label>
             <p className="text-xs text-neutral-400 mb-2">
-              Cadastre este link na Airbnb ("Importar calendário") — reservas e bloqueios daqui fecham a data lá.
+              Cadastre este mesmo link no Airbnb ("Importar calendário") e no Booking.com
+              ("Importar calendário") — reservas e bloqueios daqui fecham a data lá.
             </p>
             <div className="flex gap-2">
               <input className="input-base flex-1 text-neutral-500" readOnly value={exportUrl} onFocus={(e) => e.target.select()} />
@@ -105,8 +131,9 @@ export function IcalSyncPanel() {
         <Info className="w-4 h-4 shrink-0 mt-0.5" />
         <div>
           <p>
-            Sincronização por calendário (iCal): funciona sem aprovação da Airbnb e troca apenas as
-            datas ocupadas (sem preços nem dados do hóspede). A importação roda a cada ~15 minutos.
+            Sincronização por calendário (iCal) com Airbnb e Booking.com: funciona sem aprovação das OTAs
+            e troca apenas as datas ocupadas (sem preços nem dados do hóspede). A importação roda a cada ~15 minutos.
+            No Booking.com, disponível para acomodações sem channel manager (casas/apartamentos).
           </p>
           <Link to={ROUTES.DASHBOARD_HELP} className="inline-flex items-center gap-1 mt-1 font-medium underline hover:no-underline">
             Ver guia passo a passo <ArrowRight className="w-3.5 h-3.5" />
