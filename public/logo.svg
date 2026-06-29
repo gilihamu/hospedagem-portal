@@ -1,0 +1,26 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="HospedaBR">
+  <!-- Full-bleed brand background (ideal para maskable) -->
+  <rect width="512" height="512" fill="#1E3A5F"/>
+
+  <!-- Edifício principal (branco) -->
+  <rect x="150" y="118" width="150" height="282" rx="12" fill="#FFFFFF"/>
+  <!-- Anexo / torre menor -->
+  <rect x="288" y="196" width="96" height="204" rx="12" fill="#FFFFFF"/>
+
+  <!-- Janelas do edifício principal (knockout na cor da marca) -->
+  <g fill="#1E3A5F">
+    <rect x="172" y="150" width="38" height="38" rx="5"/>
+    <rect x="240" y="150" width="38" height="38" rx="5"/>
+    <rect x="172" y="212" width="38" height="38" rx="5"/>
+    <rect x="240" y="212" width="38" height="38" rx="5"/>
+    <rect x="172" y="274" width="38" height="38" rx="5"/>
+    <rect x="240" y="274" width="38" height="38" rx="5"/>
+    <!-- Janelas do anexo -->
+    <rect x="312" y="226" width="48" height="34" rx="5"/>
+    <rect x="312" y="284" width="48" height="34" rx="5"/>
+  </g>
+
+  <!-- Porta em destaque (dourado da marca) -->
+  <path d="M205 400 v-44 a20 20 0 0 1 40 0 v44 Z" fill="#D4A017"/>
+  <rect x="312" y="342" width="48" height="58" rx="6" fill="#D4A017"/>
+</svg>

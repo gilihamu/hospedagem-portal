@@ -3,6 +3,7 @@ import { RouterProvider } from 'react-router-dom';
 import { router } from './router';
 import { ToastContainer } from './components/ui/ToastContainer';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { PWAManager } from './components/pwa/PWAManager';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 1000 * 60 * 5, retry: 1 } }
@@ -14,6 +15,7 @@ export default function App() {
       <QueryClientProvider client={queryClient}>
         <RouterProvider router={router} />
         <ToastContainer />
+        <PWAManager />
       </QueryClientProvider>
     </ErrorBoundary>
   );
