@@ -337,7 +337,7 @@ export function BookingGrid({ bookings, properties }: BookingGridProps) {
   return (
     <div className="card-base overflow-hidden relative" ref={gridRef}>
       {/* TOOLBAR */}
-      <div className="flex items-center justify-between flex-wrap gap-2 px-4 py-3 border-b border-surface-border bg-gradient-to-r from-neutral-50 to-white">
+      <div className="flex items-center justify-between flex-wrap gap-2 px-4 py-3 border-b border-surface-border bg-gradient-to-r from-neutral-50 to-white dark:from-neutral-800 dark:to-neutral-800">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center"><Calendar className="w-4 h-4 text-primary" /></div>
           <div>
@@ -392,8 +392,8 @@ export function BookingGrid({ bookings, properties }: BookingGridProps) {
           {/* Property rows */}
           {properties.map((property) => {
             const propBookings = getPropertyBookings(property.id);
-            return (<div key={property.id} className="flex border-b border-surface-border/80 hover:bg-blue-50/30 transition-colors relative group">
-              <div className={propColClass + ' px-3 py-3 border-r border-surface-border flex items-center gap-2 bg-white group-hover:bg-blue-50/30 transition-colors sticky left-0 z-[5]'}>
+            return (<div key={property.id} className="flex border-b border-surface-border/80 hover:bg-blue-50/30 dark:hover:bg-neutral-700/30 transition-colors relative group">
+              <div className={propColClass + ' px-3 py-3 border-r border-surface-border flex items-center gap-2 bg-white dark:bg-neutral-800 group-hover:bg-blue-50/30 dark:group-hover:bg-neutral-700 transition-colors sticky left-0 z-[5]'}>
                 <div className="w-2.5 h-2.5 rounded-full bg-gradient-to-br from-primary/40 to-primary/20 flex-shrink-0 ring-1 ring-primary/10" />
                 <span className="text-xs font-semibold text-neutral-700 truncate" title={property.name}>{property.name}</span>
               </div>
@@ -412,11 +412,11 @@ export function BookingGrid({ bookings, properties }: BookingGridProps) {
                   return (<div key={i} onClick={(e) => clickable && handleDayCellClick(property.id, property.name, day, e)}
                     className={dayCellClass + ' flex-1 border-r border-surface-border/60 last:border-r-0 transition-colors '
                       + (selected ? 'bg-primary/15 ring-1 ring-inset ring-primary/40 '
-                        : blocked ? 'bg-red-50/80 '
-                        : today ? 'bg-primary/[0.04] '
-                        : isWeekend ? 'bg-neutral-50/60 '
+                        : blocked ? 'bg-red-50/80 dark:bg-red-500/10 '
+                        : today ? 'bg-primary/[0.04] dark:bg-primary/25 '
+                        : isWeekend ? 'bg-neutral-50/60 dark:bg-white/[0.03] '
                         : '')
-                      + (clickable ? 'cursor-pointer hover:bg-emerald-50/40 group/cell ' : '')}
+                      + (clickable ? 'cursor-pointer hover:bg-emerald-50/40 dark:hover:bg-emerald-500/10 group/cell ' : '')}
                     style={{ minHeight: '48px' }}>
 
                     {/* BLOCKED cell */}
@@ -557,7 +557,7 @@ export function BookingGrid({ bookings, properties }: BookingGridProps) {
       )}
 
       {/* LEGEND */}
-      <div className="flex items-center justify-between flex-wrap gap-3 px-4 py-2.5 border-t border-surface-border bg-gradient-to-r from-neutral-50 to-white">
+      <div className="flex items-center justify-between flex-wrap gap-3 px-4 py-2.5 border-t border-surface-border bg-gradient-to-r from-neutral-50 to-white dark:from-neutral-800 dark:to-neutral-800">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2.5">
             {Object.entries(STATUS_COLORS).filter(([k]) => k !== 'cancelled').map(([key, cfg]) => (<span key={key} className="flex items-center gap-1 text-[10px] text-neutral-500 font-medium"><span className={'w-3 h-2 rounded-sm ' + cfg.bg} /> {cfg.label}</span>))}
