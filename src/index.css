@@ -77,3 +77,14 @@
 .density-compact .gap-6 { gap: 1rem; }
 .density-compact .gap-4 { gap: 0.75rem; }
 .density-compact .p-5 { padding: 0.875rem; }
+
+/* ── PWA / modo standalone: respeita as safe-areas (notch, home indicator) ─────
+   Escopado a display-mode: standalone → ZERO efeito quando aberto no navegador. */
+@media (display-mode: standalone) {
+  /* Topbar não encosta no notch (caso a status bar fique translúcida). */
+  header { padding-top: env(safe-area-inset-top); }
+  /* Conteúdo rolável folga acima do home indicator. */
+  main { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+  /* Laterais seguras (paisagem em aparelhos com notch). */
+  body { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+}

@@ -338,33 +338,39 @@ export const channelService = {
     return loadLogs().filter((l) => l.connectionId === connectionId);
   },
 
-  // ── iCal (Airbnb) ─────────────────────────────────────────────────────────
-  async getIcalConfig(propertyId: string): Promise<{ importUrl: string; exportUrl: string }> {
+  // ── iCal multi-canal (Airbnb, Booking.com) ────────────────────────────────
+  async getIcalConfig(propertyId: string): Promise<{ imports: Record<string, string>; exportUrl: string }> {
     if (USE_API) {
       try {
-        const [cfg, exp] = await Promise.all([
-          api.get<{ icalImportUrl?: string }>(`/channels/ical-config/${propertyId}`),
+        const [all, exp] = await Promise.all([
+          api.get<Array<{ channelCode: string; icalImportUrl?: string }>>(`/channels/ical-config/${propertyId}/all`),
           api.get<{ path: string }>(`/bookings/ical/${propertyId}/url`),
         ]);
-        return { importUrl: cfg.icalImportUrl ?? '', exportUrl: exp.path };
+        const imports: Record<string, string> = {};
+        for (const c of all) imports[c.channelCode] = c.icalImportUrl ?? '';
+        return { imports, exportUrl: exp.path };
       } catch { /* fallback */ }
     }
     const map = getItem<Record<string, string>>(ICAL_KEY) || {};
     return {
-      importUrl: map[propertyId] ?? '',
+      imports: {
+        AIRBNB: map[`${propertyId}:AIRBNB`] ?? map[propertyId] ?? '',
+        BOOKING_COM: map[`${propertyId}:BOOKING_COM`] ?? '',
+      },
       exportUrl: `/api/bookings/ical/${propertyId}.ics?token=demo-${propertyId.slice(0, 8)}`,
     };
   },
 
-  async setIcalImportUrl(propertyId: string, importUrl: string): Promise<void> {
+  async setIcalImportUrl(propertyId: string, channel: string, importUrl: string): Promise<void> {
     if (USE_API) {
       try {
-        await api.put(`/channels/ical-config/${propertyId}`, { icalImportUrl: importUrl });
+        await api.put(`/channels/ical-config/${propertyId}?channel=${encodeURIComponent(channel)}`,
+          { icalImportUrl: importUrl, channelCode: channel });
         return;
       } catch { /* fallback */ }
     }
     const map = getItem<Record<string, string>>(ICAL_KEY) || {};
-    map[propertyId] = importUrl;
+    map[`${propertyId}:${channel}`] = importUrl;
     setItem(ICAL_KEY, map);
   },
 };
