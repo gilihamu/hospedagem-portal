@@ -33,6 +33,7 @@ const schema = z.object({
   maxGuests: z.coerce.number().min(1).max(50),
   bedrooms: z.coerce.number().min(0),
   bathrooms: z.coerce.number().min(0),
+  units: z.coerce.number().min(1).max(50),
   checkInTime: z.string().optional(),
   checkOutTime: z.string().optional(),
   amenities: z.array(z.string()),
@@ -77,6 +78,7 @@ export function PropertyFormPage() {
       maxGuests: 2,
       bedrooms: 1,
       bathrooms: 1,
+      units: 1,
       checkInTime: '12:00',
       checkOutTime: '14:00',
       isSharedRoom: false,
@@ -102,6 +104,7 @@ export function PropertyFormPage() {
         maxGuests: existing.maxGuests,
         bedrooms: existing.bedrooms,
         bathrooms: existing.bathrooms,
+        units: existing.units ?? 1,
         checkInTime: existing.checkInTime,
         checkOutTime: existing.checkOutTime,
         amenities: existing.amenities,
@@ -145,6 +148,7 @@ export function PropertyFormPage() {
         maxGuests: data.maxGuests,
         bedrooms: data.bedrooms,
         bathrooms: data.bathrooms,
+        units: data.units,
         checkInTime: data.checkInTime,
         checkOutTime: data.checkOutTime,
         amenities: data.amenities,
@@ -245,9 +249,15 @@ export function PropertyFormPage() {
             <Input label="Máx. hóspedes" type="number" min="1" max="50" error={errors.maxGuests?.message} {...register('maxGuests')} />
             <Input label="Quartos" type="number" min="0" error={errors.bedrooms?.message} {...register('bedrooms')} />
             <Input label="Banheiros" type="number" min="0" error={errors.bathrooms?.message} {...register('bathrooms')} />
+            <Input label="Nº de unidades" type="number" min="1" max="50" error={errors.units?.message} {...register('units')} />
             <Input label="Check-in" type="time" {...register('checkInTime')} />
             <Input label="Check-out" type="time" {...register('checkOutTime')} />
           </div>
+          <p className="text-xs text-neutral-400 mt-2">
+            <strong>Nº de unidades</strong>: quantas acomodações idênticas você tem para vender ao mesmo tempo.
+            Use 1 para um quarto único. Se tiver mais de uma unidade igual, aumente aqui — os canais (Booking.com etc.)
+            só ficam indisponíveis quando todas as unidades estiverem reservadas na data.
+          </p>
         </div>
 
         {/* Shared Room / Dormitories */}

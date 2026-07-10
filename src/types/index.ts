@@ -70,6 +70,8 @@ export interface Property {
   maxGuests: number;
   bedrooms: number;
   bathrooms: number;
+  /** Número de unidades físicas idênticas (default 1). Base da disponibilidade multi-unidade. */
+  units?: number;
   rating: number;
   totalReviews: number;
   status: PropertyStatus;
