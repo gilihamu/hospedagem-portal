@@ -167,6 +167,9 @@ export function BookingGrid({ bookings, properties }: BookingGridProps) {
     const rangeStart = days[0]; const rangeEnd = days[days.length - 1];
     return bookings.filter(b => {
       if (b.propertyId !== propertyId) return false;
+      // Canceladas NÃO ocupam a data: sem isto a barra continuava desenhada sobre um dia livre
+      // (a célula abaixo já ignorava canceladas em hasDayBooking) — parecia reservado sem estar.
+      if (b.status === 'cancelled') return false;
       const ci = parseISO(b.checkIn); const co = parseISO(b.checkOut);
       return ci <= rangeEnd && co > rangeStart;
     });
